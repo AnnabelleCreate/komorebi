@@ -37,6 +37,8 @@ final class NarrationPlayer {
     private(set) var elapsed: Double = 0
     private(set) var duration: Double = 0
     private(set) var problem: String?
+    /// False until the narration file is open and ready to play.
+    private(set) var isReady = false
     private(set) var sleepTimer: SleepTimer = .off
     private(set) var sleepEndsAt: Date?
     /// Shown after the sleep timer fades a story out.
@@ -71,6 +73,7 @@ final class NarrationPlayer {
         stop(keepStory: false)
         self.story = story
         problem = nil
+        isReady = false
         guard let url = StoryLibrary.shared.audioURL(for: story) else {
             problem = "This narration isn’t in this build. You can still read the story."
             return
@@ -91,6 +94,7 @@ final class NarrationPlayer {
                 } else if status == .readyToPlay {
                     let seconds = item.duration.seconds
                     if seconds.isFinite && seconds > 0 { self.duration = seconds }
+                    self.isReady = true
                     self.updateNowPlaying()
                 }
             }

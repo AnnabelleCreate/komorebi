@@ -71,6 +71,12 @@ final class GardenController {
     private(set) var ridge: CGImage?
     private(set) var groove: CGImage?
     private(set) var tracePercent = 0
+    /// True while the sand is being prepared in the background.
+    private(set) var isLoading = true
+    /// Set if the sand couldn't be prepared (for example, the phone is very low on memory).
+    private(set) var loadFailed = false
+    @ObservationIgnored private var buildToken = 0
+    @ObservationIgnored private var lastSetup: (height: CGFloat, palette: GardenPalette)?
 
     @ObservationIgnored private(set) var engine: GardenEngine?
     @ObservationIgnored private var link: CADisplayLink?
@@ -121,12 +127,32 @@ final class GardenController {
         self.announce = announce
         if let engine, abs(engine.height - height) < 1, engine.palette.isBright == palette.isBright { return }
         if let engine { GardenStorage.save(engine) }
+        lastSetup = (height, palette)
         let scale = min(2, UIScreen.main.scale)
-        engine = GardenEngine(height: height, scale: scale, palette: palette)
-        if let engine { GardenStorage.load(into: engine) }
-        if pathMode { loadShape() }
-        dirty = true
-        publish()
+        isLoading = true
+        loadFailed = false
+        buildToken += 1
+        let token = buildToken
+        // Making the sand texture and reading the saved garden can take a moment, so it happens off the main thread.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let built = GardenEngine(height: height, scale: scale, palette: palette)
+            if let built { GardenStorage.load(into: built) }
+            DispatchQueue.main.async {
+                guard let self, token == self.buildToken else { return }
+                self.engine = built
+                self.isLoading = false
+                self.loadFailed = built == nil
+                if built != nil && self.pathMode { self.loadShape() }
+                self.dirty = true
+                self.publish()
+            }
+        }
+    }
+
+    func retrySetUp() {
+        guard let last = lastSetup else { return }
+        engine = nil
+        setUp(height: last.height, palette: last.palette, announce: announce)
     }
 
     func start() {

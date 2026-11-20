@@ -4,6 +4,7 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @State private var ready = false
 
     var body: some View {
         @Bindable var router = router
@@ -11,7 +12,9 @@ struct RootView: View {
 
         ZStack {
             Palette.background.ignoresSafeArea()
-            if store.state.onboarded {
+            if !ready {
+                LoadingView(message: "Settling in…", style: .fullScreen).transition(.opacity)
+            } else if store.state.onboarded {
                 MainTabView().transition(.opacity)
             } else {
                 OnboardingView().transition(.opacity)
@@ -20,6 +23,15 @@ struct RootView: View {
         .overlay { WarmScreenTint(amount: store.state.settings.warmScreen) }
         .overlay(alignment: .top) { StatusBanner() }
         .animation(Motion.ease(reduce), value: store.state.onboarded)
+        .animation(Motion.ease(reduce), value: ready)
+        .task {
+            // Stories and sounds load off the main thread so the first frame never freezes.
+            await Task.detached(priority: .userInitiated) {
+                _ = StoryLibrary.shared.stories.count
+                SoundEngine.shared.prepare()
+            }.value
+            ready = true
+        }
         .environment(\.komorebiReduceMotion, reduce)
         .modifier(AppTextSize(choice: store.state.textSize))
         .fullScreenCover(item: $router.activity) { route in

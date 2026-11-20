@@ -44,6 +44,26 @@ struct GardenView: View {
                     }
 
                 overlays
+
+                if garden.loadFailed {
+                    VStack(spacing: 12) {
+                        Text("The sand couldn’t be prepared.").font(KFont.heading(18)).foregroundStyle(Palette.text)
+                        Text("Your phone may be low on memory. Closing other apps can help.")
+                            .font(KFont.body(14)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
+                        Button("Try again") { garden.retrySetUp() }.buttonStyle(PrimaryButtonStyle(fullWidth: false))
+                        Button("Leave the garden") { dismiss() }.buttonStyle(GhostButtonStyle())
+                    }
+                    .padding(24)
+                    .kCard(radius: 22)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Palette.background.opacity(0.6).ignoresSafeArea())
+                } else if garden.isLoading && garden.layer != .intro {
+                    LoadingView(message: "Smoothing the sand…", style: .inline, delay: 0.25,
+                                slowActionTitle: "Leave the garden", slowAction: { dismiss() })
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .allowsHitTesting(true)
+                }
             }
             .onAppear {
                 garden.reduceMotion = reduce

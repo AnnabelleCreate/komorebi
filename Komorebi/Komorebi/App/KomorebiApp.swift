@@ -12,7 +12,6 @@ struct KomorebiApp: App {
 
     init() {
         FontRegistrar.registerBundledFonts()
-        SoundEngine.shared.prepare()
         Appearance.configure()
     }
 

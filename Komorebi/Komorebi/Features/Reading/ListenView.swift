@@ -42,6 +42,12 @@ struct ListenView: View {
 
                 if let problem = player.problem, player.story?.id == story.id {
                     problemCard(problem)
+                } else if !player.isReady {
+                    LoadingView(message: "Getting the narrator ready…", style: .inline, delay: 0.3, slowAfter: 6,
+                                slowMessage: "The narration is taking longer than usual to open.",
+                                slowActionTitle: "Read the story instead",
+                                slowAction: { router.activity = .reader(story.id) })
+                        .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
                     scrubber
                     transport
