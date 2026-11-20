@@ -78,7 +78,7 @@ struct DappledLight: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
             Canvas { ctx, size in
                 let t = timeline.date.timeIntervalSinceReferenceDate
-                let s = min(size.width, size.height)
+                let s = min(size.width, size.height) * 0.8
                 let c = CGPoint(x: size.width / 2, y: size.height / 2)
                 let breathe = 0.5 + 0.5 * sin(t * 2 * .pi / 4.5)
 
