@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Komorebi's loading screen: sunlight moving through ginkgo leaves.
+/// Komorebi's loading screen: a golden ginkgo leaf floating in dappled light.
 ///
 /// It waits a moment before appearing, so quick loads never flash a spinner.
 /// If loading runs long, it says so plainly and can offer a way out.
@@ -69,7 +69,7 @@ struct LoadingView: View {
     }
 }
 
-/// A warm sun with ginkgo leaves drifting across it and small dapples of light.
+/// A golden ginkgo leaf floating in a soft glow, with small dapples of light.
 /// With Reduce Motion, nothing moves; the light only brightens and dims softly.
 struct DappledLight: View {
     var reduce: Bool
@@ -82,28 +82,34 @@ struct DappledLight: View {
                 let c = CGPoint(x: size.width / 2, y: size.height / 2)
                 let breathe = 0.5 + 0.5 * sin(t * 2 * .pi / 4.5)
 
-                // Glow and sun
-                let glowR = s * (0.5 + 0.04 * breathe)
-                ctx.fill(Path(ellipseIn: CGRect(x: c.x - glowR, y: c.y - glowR, width: glowR * 2, height: glowR * 2)),
-                         with: .radialGradient(Gradient(colors: [Palette.gold.opacity(0.38 + 0.12 * breathe), Palette.gold.opacity(0)]),
-                                               center: c, startRadius: s * 0.18, endRadius: glowR))
-                let sunR = s * 0.26
-                ctx.fill(Path(ellipseIn: CGRect(x: c.x - sunR, y: c.y - sunR, width: sunR * 2, height: sunR * 2)),
-                         with: .color(Palette.gold))
+                // A single golden ginkgo leaf, floating on a slow breath of air
+                let bob = reduce ? 0 : sin(t * 2 * .pi / 4.5)
+                let sway = reduce ? 0 : sin(t * 2 * .pi / 6.2 + 0.8)
+                let leafCenter = CGPoint(x: c.x + sway * s * 0.04, y: c.y + s * 0.1 - bob * s * 0.06)
 
-                // Leaves passing in front of the sun
-                let leaves: [(x: Double, y: Double, scale: Double, angle: Double, phase: Double)] = [
-                    (-0.2, 0.12, 0.34, -0.5, 0), (0.22, 0.2, 0.26, 0.6, 2.1), (0.05, -0.24, 0.2, 0.15, 4.2),
-                ]
-                for leaf in leaves {
-                    let sway = reduce ? 0 : sin(t * 0.7 + leaf.phase)
-                    let drift = reduce ? 0 : sin(t * 0.35 + leaf.phase) * 0.06
-                    let p = CGPoint(x: c.x + (leaf.x + drift) * s, y: c.y + leaf.y * s + sway * s * 0.02)
-                    ctx.drawLayer { layer in
-                        layer.translateBy(x: p.x, y: p.y)
-                        layer.rotate(by: .radians(leaf.angle + sway * 0.12))
-                        layer.fill(Self.ginkgo(radius: s * leaf.scale), with: .color(Palette.cardRaised.opacity(0.92)))
+                // Soft warm glow that follows the leaf
+                let glowR = s * (0.5 + 0.04 * breathe)
+                ctx.fill(Path(ellipseIn: CGRect(x: leafCenter.x - glowR, y: leafCenter.y - s * 0.14 - glowR, width: glowR * 2, height: glowR * 2)),
+                         with: .radialGradient(Gradient(colors: [Palette.gold.opacity(0.22 + 0.1 * breathe), Palette.gold.opacity(0)]),
+                                               center: CGPoint(x: leafCenter.x, y: leafCenter.y - s * 0.14), startRadius: s * 0.05, endRadius: glowR))
+
+                ctx.drawLayer { layer in
+                    layer.translateBy(x: leafCenter.x, y: leafCenter.y)
+                    layer.rotate(by: .radians(-0.12 + sway * 0.14))
+                    let r = s * 0.44
+                    let leafShape = Self.ginkgo(radius: r)
+                    layer.fill(leafShape, with: .linearGradient(
+                        Gradient(colors: [Color(hex: 0xFFE3A6), Palette.gold, Color(hex: 0xE2B262)]),
+                        startPoint: CGPoint(x: 0, y: -r), endPoint: CGPoint(x: 0, y: r * 0.2)))
+                    // Fine veins fanning out from the stem, kept inside the leaf
+                    layer.clip(to: leafShape)
+                    var veins = Path()
+                    for i in 0...8 {
+                        let a = Double.pi * (1.16 + 0.68 * Double(i) / 8)
+                        veins.move(to: .zero)
+                        veins.addLine(to: CGPoint(x: cos(a) * r * 0.9, y: sin(a) * r * 0.9))
                     }
+                    layer.stroke(veins, with: .color(Color(hex: 0xC9953F, opacity: 0.45)), lineWidth: max(0.6, r * 0.012))
                 }
 
                 // Dapples of light
