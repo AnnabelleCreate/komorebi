@@ -1,0 +1,38 @@
+name: Build unsigned IPA
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and package
+        run: |
+          set -euo pipefail
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+          WS=$(find . -maxdepth 3 -name "*.xcworkspace" -not -path "*.xcodeproj/*" -not -path "*/Pods/*" | head -1)
+          if [ -n "$WS" ]; then ARGS=(-workspace "$WS"); else
+            PROJ=$(find . -maxdepth 3 -name "*.xcodeproj" | head -1); ARGS=(-project "$PROJ"); fi
+          echo "Using: ${ARGS[*]}"
+
+          SCHEME=$(xcodebuild -list -json "${ARGS[@]}" | python3 -c 'import json,sys; d=json.load(sys.stdin); s=(d.get("workspace") or d.get("project"))["schemes"]; m=[x for x in s if not any(k in x.lower() for k in ("widget","extension","test"))]; print((m or s)[0])')
+          echo "Scheme: $SCHEME"
+
+          xcodebuild "${ARGS[@]}" -scheme "$SCHEME" -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          mkdir Payload && cp -R "$APP" Payload/
+          zip -qry Komorebi.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Komorebi-ipa
+          path: Komorebi.ipa
