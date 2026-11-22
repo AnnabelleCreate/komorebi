@@ -71,7 +71,7 @@ struct StatusBanner: View {
         if let message = store.saveProblem ?? (store.recoveredFromDamagedSave ? "Komorebi couldn’t read its saved data, so it started fresh. A backup was kept on this phone." : nil) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.circle").foregroundStyle(Palette.gold)
-                Text(message).font(KFont.body(13)).foregroundStyle(Palette.text)
+                Text(message).font(KFont.body(14)).foregroundStyle(Palette.text)
                 Spacer(minLength: 0)
                 Button {
                     store.recoveredFromDamagedSave = false
@@ -91,24 +91,66 @@ struct StatusBanner: View {
 
 struct MainTabView: View {
     @Environment(Router.self) private var router
+
     var body: some View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
             NavigationStack { TonightView() }
-                .tabItem { Label("Tonight", systemImage: "moon.stars") }
+                .toolbar(.hidden, for: .tabBar)
                 .tag(AppTab.tonight)
-            NavigationStack { DiscoverView() }
-                .tabItem { Label("Discover", systemImage: "magnifyingglass") }
-                .tag(AppTab.discover)
             KitsTab()
-                .tabItem { Label("Kits", systemImage: "shippingbox") }
+                .toolbar(.hidden, for: .tabBar)
                 .tag(AppTab.kits)
             NavigationStack { ProfileView() }
-                .tabItem { Label("Profile", systemImage: "person") }
+                .toolbar(.hidden, for: .tabBar)
                 .tag(AppTab.profile)
         }
-        .tint(Palette.gold)
+        .safeAreaInset(edge: .bottom, spacing: 0) { KomorebiTabBar(selection: $router.tab) }
         .onChange(of: router.tab) { _, _ in Haptics.shared.selection() }
+    }
+}
+
+/// The Komorebi tab bar from the Figma prototype: the selected icon sits in a gold pill.
+struct KomorebiTabBar: View {
+    @Binding var selection: AppTab
+    private let items: [(AppTab, String, String)] = [
+        (.tonight, "Tonight", "house"),
+        (.kits, "Kits", "shippingbox"),
+        (.profile, "Profile", "person"),
+    ]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(items.indices, id: \.self) { i in
+                let item = items[i]
+                let on = selection == item.0
+                Button {
+                    selection = item.0
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: item.2)
+                            .font(.system(size: 17, weight: .regular))
+                            .foregroundStyle(on ? Palette.background : Palette.text2)
+                            .frame(width: 56, height: 30)
+                            .background(Capsule().fill(on ? Palette.gold : .clear))
+                        Text(item.1)
+                            .font(on ? KFont.medium(14, relativeTo: .caption) : KFont.body(14, relativeTo: .caption))
+                            .foregroundStyle(on ? Palette.text : Palette.text2)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.1)
+                .accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 2)
+        .background(Palette.card.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Rectangle().fill(Palette.outline).frame(height: 1) }
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 }
 

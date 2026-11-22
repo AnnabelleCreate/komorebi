@@ -28,7 +28,7 @@ You need a Mac with **Xcode 16 or later** (Xcode 26 works too) and an iPhone on 
 
 If `Komorebi.xcodeproj` won't open on your Xcode version, install XcodeGen (`brew install xcodegen`) and run `xcodegen` in this folder to rebuild the project from `project.yml`.
 
-**Fonts (optional, recommended).** The design uses Urbanist, Prompt and Literata (all free under the SIL Open Font License from Google Fonts). Drop the `.ttf` files (`Urbanist-Bold`, `Prompt-Regular`, `Prompt-Medium`, `Prompt-Light`, `Literata-Regular`) anywhere inside the `Komorebi/` folder and they're picked up automatically. Without them, Komorebi uses the closest iOS system fonts.
+**Fonts.** Urbanist (titles), Prompt (body text) and Literata (serif reading) are bundled in `Komorebi/Resources/Fonts` and `KomorebiWidgets/Fonts` under the SIL Open Font License, so the app matches the Figma design system type scale: display 32, headings 28 / 24 / 20, body 18 / 16, caption 14.
 
 ### Without a paid Apple Developer account
 You can still run Komorebi on your own iPhone with a free Apple ID ("Personal Team"). The app stops opening after 7 days and has to be re-installed from Xcode, and only phones plugged into your Mac can get it, so this doesn't meet beta check 1. Notifications, widgets and Live Activities still work.
@@ -48,15 +48,15 @@ An **iPhone** on **iOS 17 or later**, in portrait. It's designed at the iPhone 1
 | Part | What it does |
 | --- | --- |
 | First-time setup | Three short questions (your name, text size, when evenings wind down), all skippable. |
-| Tonight | A suggestion that changes with the hour (keep reading, Lantern release before bed, Sand garden after midnight), more for you, and a now-playing card. |
+| Tonight (home) | Greeting; a **Now playing / Paused** card for the story you were listening to (it stays after you pause or close the app); **Your go-to** favorite; tonight’s suggestion; the two rituals; and the **story shelf**: Mythology, Poems and Literature, with a swipeable carousel of covers. The Discover tab was removed, since everything now fits on Tonight. |
 | Sand garden | Drag to rake around three stones, tap a stone for rings, or trace a ginkgo leaf, river or spiral. Steady touch smooths shaky hands. Smooth it away, or leave it: **your garden is saved and still there next time.** |
-| Lantern release | Type one thought, fold it into a lantern, then **blow into the microphone** (or press and hold, or tap) to send it down the river. The words are never saved. |
-| Reading | Nine public-domain stories and poems from across Asia. Text size, serif or sans, warmth, dim slowly. **Your place is saved.** At the end, keep one line. |
-| Listening | LibriVox narration bundled in the app (works offline), ±15 s, speed, a sleep timer that fades the voice out, “Still awake?”, screen off, Lock Screen and Control Center controls, and a **Live Activity** with the sleep-timer countdown. |
+| Lantern release | Type one thought in a note below the lantern, watch the note fold and tuck into the lantern, then **blow into the microphone** (or press and hold, or tap). The lantern drifts up the river and slips behind the far bank on the horizon. The words are never saved. |
+| Reading | Paged like the Figma reader: swipe or use the arrows to turn pages, see “Page 2 of 10 · 6 min left”, bookmark a page, and change size, serif or sans, warmth and dim slowly. **Your place is saved.** The last page is “The end.” with a line to keep. |
+| Listening | Laid out like Figma: cover, scrubber, ±15 s, speed, **Stop playing** sleep timer (Off, End of story, 15, 30 min) that fades the voice out, **Still awake? Add time** (+5 / +15 min), and Turn screen off. Swipe down to close. **Read along:** the headphones button in the reader (or the book button here) highlights the sentence being narrated, dims the rest, and turns pages for you, like synced lyrics; tap a paragraph to jump there. Lock Screen controls and a **Live Activity** with working +15 min, Stop and pause buttons. |
 | Kits | Kit of the month → How often → Bag → Shipping → Payment → Review → Confirmed, with real form checks. Orders are saved; monthly plans can be skipped, cancelled or restarted, with a reminder 3 days before each box. |
-| Profile | Favorited activities, purchase history with a monthly-plan switch, and Settings. |
-| Settings | **Activity prompts:** evening and night prompts with days and times, sent as real notifications or shown on the Lock Screen widget. **Accessibility:** text size, activity light, warm screen, reduce motion, steady touch, one-tap raking, tap instead of hold, sounds, ambience, volume, haptics. Lines you kept, orders, erase everything. |
-| Widgets | Sand garden (Home Screen, Lock Screen, StandBy) that changes to the evening or night prompt at your times, and a Your story widget with reading progress. |
+| Profile | Favorited activities (tap the star to make one your **go-to**), purchase history with a monthly-plan switch, and Settings. |
+| Settings | Gear in the top-right of Profile. **Notification Preferences:** one wind-down schedule (Scheduled, every day or chosen days, from–until) that the widget follows, plus an optional quiet notification. **Widget:** choose which favorite the widget opens. **Accessibility:** text size, activity light, warm screen, reduce motion, steady touch, one-tap raking, tap instead of hold, sounds, ambience, volume, haptics. Lines you kept, orders, erase everything. |
+| Widgets | Built from the V2 Figma frames. **Your go-to** (Home Screen small and medium, StandBy, Lock Screen) opens the activity you chose and says “Tonight” during your wind-down time. **Your story** shows the story you’re reading with minutes left and the gold progress ring. The sleep-timer **Live Activity** matches the Figma card. |
 
 ## The five beta checks
 
@@ -66,7 +66,7 @@ An **iPhone** on **iOS 17 or later**, in portrait. It's designed at the iPhone 1
 - **Touch input:** raking, tracing and stone taps, with real-time smoothing (One Euro filter).
 - **Microphone:** Lantern release listens for a breath. Only the loudness level is read; nothing is recorded or saved.
 - **Audio:** real narration files, Lock Screen controls, background playback, interruptions (calls, unplugging headphones).
-- **Notifications:** real scheduled local notifications for the evening and night prompts and for kit reminders.
+- **Notifications:** a real scheduled notification at the start of your wind-down time, and kit reminders.
 - **Widgets and Live Activities:** real WidgetKit widgets and an ActivityKit Live Activity.
 - **Haptics:** soft taps while raking and releasing.
 - **Data:** everything is saved to a file on the phone.
@@ -97,7 +97,7 @@ An **iPhone** on **iOS 17 or later**, in portrait. It's designed at the iPhone 1
 | **Kit payment** | Test mode. The card form is fully checked, but no money is charged. 4242 4242 4242 4242 succeeds; the decline test cards fail. | Taking real money needs a payment provider account (for example Stripe), a server to hold the secret key, sales tax and refunds. Charging classmates and instructors real money for a class beta isn't appropriate. |
 | **Apple Pay** | Not offered. | Apple Pay needs a paid developer account and a merchant ID. It can be added once payment is real. |
 | **Kit shipping** | The order is saved for real. Its status (Ordered → Packed → On its way → On your nightstand) moves with the calendar. No box is actually sent. | We're preparing one example kit, not fulfilling orders. |
-| **Night prompt** | A silent notification at the start of your night window, or the Lock Screen widget switching to "Still awake?". | iOS doesn't let apps know when you pick up your phone, and a Live Activity can only be started from the app or from a push server. |
+| **Read-along timing** | The highlighted sentence is estimated from the length of each sentence and the narration’s length (allowing for LibriVox’s short spoken introduction), so it can run a few seconds ahead or behind. Tapping a paragraph re-syncs it. | The LibriVox recordings don’t come with word-level timestamps. Aligning them exactly would need a speech-alignment pass we haven’t done yet. |
 | **Accounts and sync** | Everything is saved on one phone only, with no sign-in and no cloud. | Privacy by design for a sleep app, and no server to run. Deleting the app deletes the data. |
 | **Coloring, Patterns, Music** | Not in the iOS beta (still in the Figma prototype). | We cut the beta down to three activities done well. |
 
@@ -118,11 +118,18 @@ An **iPhone** on **iOS 17 or later**, in portrait. It's designed at the iPhone 1
 
 | Date | Change | Why |
 | --- | --- | --- |
+| Nov 21 | Bundled Urbanist, Prompt and Literata and matched the Figma type scale. | The beta was falling back to system fonts; our design system uses Urbanist and Prompt. |
+| Nov 21 | Removed the Discover tab; rituals and the story shelf now live on Tonight. Added a three-tab bar with the gold pill from Figma. | Only a few activities; one home is simpler. |
+| Nov 21 | Favorites can be set as your **go-to**: it sits at the top of Tonight, and you can choose which favorite the widget opens. | Get to the activity you rely on in one tap. |
+| Nov 21 | One wind-down schedule (Notification Preferences) drives the widget and an optional notification. The separate night prompt was removed. | Two settings did the same job. |
+| Nov 21 | Reader and Listening rebuilt to match the Figma prototype: paged reader with swipes, read-along highlighting, swipe down to close the player, and a paused story that stays on Tonight. | Match the screens and motion we already designed and tested. |
+| Nov 21 | Lantern: the note no longer covers the lantern; it folds into it; the river ends at the horizon where the lantern disappears. | Clearer story of letting go. |
+| Nov 21 | Widgets and the sleep-timer Live Activity rebuilt from the V2 Figma frames, with working +15 min, Stop and pause buttons. | Match the prototype. |
 | Nov 17 | Rebuilt as a native iOS app in Swift and SwiftUI, with a widget extension. | Beta checks 1–3: an installable app with real notifications, widgets, a Live Activity, microphone, audio and saved data. |
 | Nov 17 | Evening and night prompts became real notifications, or a Lock Screen widget that changes at your chosen times. The night prompt never lights the screen. | Ethics audit: prompts only when chosen, and never waking anyone up. |
 | Nov 17 | The lantern can be released by blowing into the microphone. | Critique asked for a breathing exercise. This makes the breath the action. |
 | Nov 17 | Checkout gained real validation, test cards and decline handling. Monthly plans get a reminder 3 days before shipping, and can be skipped, cancelled or restarted from Profile. | Beta check 4, and the ethics audit's warning about subscriptions that are hard to cancel. |
-| Nov 17 | Reading scrolls instead of turning pages. | Scrolling works better with large text and VoiceOver, and still saves your place. |
+
 | Nov 16 | Web beta: VoiceOver raking (one-tap raking), gentle fades with Reduce Motion, general accessibility settings, evening and night prompts. | VoiceOver and Reduce Motion testing on iPhone. |
 
 Credits: story texts from Project Gutenberg; narration by LibriVox volunteers (public domain); interface sounds and art made for Komorebi.

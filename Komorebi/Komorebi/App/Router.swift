@@ -1,7 +1,7 @@
 import Observation
 import SwiftUI
 
-enum AppTab: Hashable { case tonight, discover, kits, profile }
+enum AppTab: Hashable { case tonight, kits, profile }
 
 /// Full-screen activities that sit above the tabs.
 enum ActivityRoute: Identifiable, Hashable {
@@ -43,9 +43,19 @@ final class Router {
         case "garden": activity = .garden
         case "lantern": activity = .lantern
         case "read":
-            if let id = parts.first, library.story(id) != nil { activity = .reader(id) } else { activity = nil; tab = .discover }
+            if let id = parts.first, library.story(id) != nil { activity = .reader(id) } else { activity = nil; tab = .tonight }
         case "listen":
-            if let id = parts.first, library.story(id) != nil { activity = .listen(id) } else { activity = nil; tab = .discover }
+            if let id = parts.first, library.story(id) != nil { activity = .listen(id) } else { activity = nil; tab = .tonight }
+        case "open":
+            // Widget and notification: open the chosen activity directly.
+            switch parts.first ?? "" {
+            case "garden": activity = .garden
+            case "lantern": activity = .lantern
+            case let id where library.story(id) != nil:
+                let listening = (AppStore.shared.state.audioPositions[id] ?? 0) > 5
+                activity = listening ? .listen(id) : .reader(id)
+            default: activity = nil; tab = .tonight
+            }
         case "kits":
             activity = nil
             tab = .kits

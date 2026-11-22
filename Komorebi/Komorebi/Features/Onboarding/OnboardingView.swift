@@ -75,7 +75,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 18) {
             Spacer()
             Text("What should we call you?").font(KFont.title(28)).foregroundStyle(Palette.text)
-            Text("Only used to greet you. It stays on this phone.").font(KFont.body(15)).foregroundStyle(Palette.text2)
+            Text("Only used to greet you. It stays on this phone.").font(KFont.body(16)).foregroundStyle(Palette.text2)
             TextField("", text: $name, prompt: Text("Your first name").foregroundStyle(Palette.text3))
                 .font(KFont.body(18))
                 .foregroundStyle(Palette.text)
@@ -96,7 +96,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 18) {
             Spacer()
             Text("How big should text be?").font(KFont.title(28)).foregroundStyle(Palette.text)
-            Text("You can change this anytime in Settings.").font(KFont.body(15)).foregroundStyle(Palette.text2)
+            Text("You can change this anytime in Settings.").font(KFont.body(16)).foregroundStyle(Palette.text2)
             VStack(spacing: 10) {
                 ForEach(TextSizeChoice.allCases) { choice in
                     Button {
@@ -130,7 +130,7 @@ struct OnboardingView: View {
             Spacer()
             Text("When do your evenings wind down?").font(KFont.title(28)).foregroundStyle(Palette.text)
             Text("Komorebi can send one quiet suggestion around then. Never streaks, never reminders to come back.")
-                .font(KFont.body(15)).foregroundStyle(Palette.text2)
+                .font(KFont.body(16)).foregroundStyle(Palette.text2)
             VStack(spacing: 0) {
                 Toggle(isOn: $wantsPrompt) {
                     Text("Send me a gentle evening prompt").font(KFont.body(16)).foregroundStyle(Palette.text)
@@ -148,7 +148,7 @@ struct OnboardingView: View {
             .kCard(radius: 14)
             if prompts.permission == .denied && wantsPrompt {
                 Text("Notifications are off for Komorebi in iPhone Settings. You can turn them on later, or use the Lock Screen widget instead.")
-                    .font(KFont.body(13)).foregroundStyle(Palette.warm)
+                    .font(KFont.body(14)).foregroundStyle(Palette.warm)
             }
             Spacer(); Spacer()
         }
@@ -170,6 +170,7 @@ struct OnboardingView: View {
         if !skipped {
             let parts = Calendar.current.dateComponents([.hour, .minute], from: eveningTime)
             state.evening.startMinutes = (parts.hour ?? 20) * 60 + (parts.minute ?? 0)
+            state.evening.endMinutes = (state.evening.startMinutes + 120) % (24 * 60)
             state.evening.isOn = wantsPrompt
             state.evening.style = .notification
         }

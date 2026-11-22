@@ -47,7 +47,7 @@ struct GardenView: View {
 
                 if garden.loadFailed {
                     VStack(spacing: 12) {
-                        Text("The sand couldn’t be prepared.").font(KFont.heading(18)).foregroundStyle(Palette.text)
+                        Text("The sand couldn’t be prepared.").font(KFont.heading(20)).foregroundStyle(Palette.text)
                         Text("Your phone may be low on memory. Closing other apps can help.")
                             .font(KFont.body(14)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
                         Button("Try again") { garden.retrySetUp() }.buttonStyle(PrimaryButtonStyle(fullWidth: false))
@@ -245,9 +245,9 @@ struct GardenView: View {
             Spacer()
             VStack(alignment: .leading, spacing: 10) {
                 Eyebrow(text: "Karesansui · Japanese dry garden")
-                Text("Sand garden").font(KFont.title(30)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
+                Text("Sand garden").font(KFont.title(28)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
                 Text("Rake slow lines. Tap a stone to ripple it. Your garden stays until you smooth it away.")
-                    .font(KFont.body(15)).foregroundStyle(Palette.text2)
+                    .font(KFont.body(16)).foregroundStyle(Palette.text2)
                 HStack(spacing: 10) {
                     Button("Trace a path") { withAnimation(Motion.ease(reduce)) { garden.begin(tracing: true) } }
                         .buttonStyle(PrimaryButtonStyle())
@@ -285,7 +285,7 @@ struct GardenView: View {
 
             if !garden.label.isEmpty {
                 Text(garden.label)
-                    .font(KFont.medium(15))
+                    .font(KFont.medium(16))
                     .foregroundStyle(isBright ? Color(hex: 0x1C2139) : Palette.text)
                     .padding(.horizontal, 14).padding(.vertical, 9)
                     .background(RoundedRectangle(cornerRadius: 16).fill(isBright ? Color(hex: 0x1C2139, opacity: 0.12) : Color(hex: 0x1C2139, opacity: 0.55)))
@@ -298,7 +298,7 @@ struct GardenView: View {
 
             if !garden.hinted && !garden.pathMode && !store.state.settings.oneTapRaking {
                 Text("Drag slowly")
-                    .font(KFont.medium(17))
+                    .font(KFont.medium(18))
                     .foregroundStyle((isBright ? Color(hex: 0x1C2139) : Palette.text).opacity(0.8))
                     .transition(.opacity)
                     .accessibilityHidden(true)
@@ -350,8 +350,8 @@ struct GardenView: View {
         VStack(spacing: 14) {
             Spacer()
             Image(systemName: "moon").font(.system(size: 28)).foregroundStyle(Palette.gold)
-            Text("Rest well.").font(KFont.title(30)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
-            Text("Your garden will be here next time.").font(KFont.body(15)).foregroundStyle(Palette.text2)
+            Text("Rest well.").font(KFont.title(28)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
+            Text("Your garden will be here next time.").font(KFont.body(16)).foregroundStyle(Palette.text2)
             Spacer()
             Button("Rake again") { withAnimation(Motion.ease(reduce)) { garden.wake() } }
                 .buttonStyle(SecondaryButtonStyle(fullWidth: false))

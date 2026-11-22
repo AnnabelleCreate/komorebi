@@ -23,6 +23,8 @@ enum KomorebiLink {
     static let kits = URL(string: "komorebi://kits")!
     static func read(_ id: String) -> URL { URL(string: "komorebi://read/\(id)")! }
     static func listen(_ id: String) -> URL { URL(string: "komorebi://listen/\(id)")! }
+    /// Opens any activity by key: "garden", "lantern" or a story id.
+    static func open(_ key: String) -> URL { URL(string: "komorebi://open/\(key)")! }
 }
 
 /// A small, privacy-safe summary the app writes for its widgets.
@@ -41,12 +43,65 @@ struct WidgetSnapshot: Codable, Equatable {
     var nightStartMinutes: Int
     var nightEndMinutes: Int
     var nightWeekdays: [Int]
+    /// End of the wind-down window (minutes after midnight).
+    var eveningEndMinutes: Int = 22 * 60
+    /// The activity the widget opens ("garden", "lantern" or a story id), with its display name.
+    var activityKey: String = "garden"
+    var activityTitle: String = "Sand garden"
+    var activityDetail: String = "Ritual · as long as you like"
+    /// Minutes left in the story being read or listened to.
+    var storyMinutesLeft: Int = 0
 
     static let placeholder = WidgetSnapshot(
-        storyID: nil, storyTitle: nil, storyAuthor: nil, storyProgress: 0,
+        storyID: "yuki-onna", storyTitle: "Yuki-Onna", storyAuthor: "Lafcadio Hearn", storyProgress: 0.3,
         eveningOn: true, eveningAsWidget: true, eveningMinutes: 20 * 60, eveningWeekdays: Array(1...7),
-        nightOn: true, nightAsWidget: true, nightStartMinutes: 60, nightEndMinutes: 5 * 60, nightWeekdays: Array(1...7)
+        nightOn: false, nightAsWidget: false, nightStartMinutes: 60, nightEndMinutes: 5 * 60, nightWeekdays: Array(1...7),
+        eveningEndMinutes: 22 * 60, activityKey: "garden", activityTitle: "Sand garden",
+        activityDetail: "Ritual · as long as you like", storyMinutesLeft: 5
     )
+
+    init(storyID: String?, storyTitle: String?, storyAuthor: String?, storyProgress: Double,
+         eveningOn: Bool, eveningAsWidget: Bool, eveningMinutes: Int, eveningWeekdays: [Int],
+         nightOn: Bool, nightAsWidget: Bool, nightStartMinutes: Int, nightEndMinutes: Int, nightWeekdays: [Int],
+         eveningEndMinutes: Int = 22 * 60, activityKey: String = "garden", activityTitle: String = "Sand garden",
+         activityDetail: String = "Ritual · as long as you like", storyMinutesLeft: Int = 0) {
+        self.storyID = storyID; self.storyTitle = storyTitle; self.storyAuthor = storyAuthor; self.storyProgress = storyProgress
+        self.eveningOn = eveningOn; self.eveningAsWidget = eveningAsWidget; self.eveningMinutes = eveningMinutes; self.eveningWeekdays = eveningWeekdays
+        self.nightOn = nightOn; self.nightAsWidget = nightAsWidget; self.nightStartMinutes = nightStartMinutes
+        self.nightEndMinutes = nightEndMinutes; self.nightWeekdays = nightWeekdays
+        self.eveningEndMinutes = eveningEndMinutes; self.activityKey = activityKey; self.activityTitle = activityTitle
+        self.activityDetail = activityDetail; self.storyMinutesLeft = storyMinutesLeft
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case storyID, storyTitle, storyAuthor, storyProgress, eveningOn, eveningAsWidget, eveningMinutes, eveningWeekdays
+        case nightOn, nightAsWidget, nightStartMinutes, nightEndMinutes, nightWeekdays
+        case eveningEndMinutes, activityKey, activityTitle, activityDetail, storyMinutesLeft
+    }
+
+    /// Tolerant decoding so an older snapshot never breaks the widget.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let p = WidgetSnapshot.placeholder
+        storyID = try? c.decode(String.self, forKey: .storyID)
+        storyTitle = try? c.decode(String.self, forKey: .storyTitle)
+        storyAuthor = try? c.decode(String.self, forKey: .storyAuthor)
+        storyProgress = (try? c.decode(Double.self, forKey: .storyProgress)) ?? 0
+        eveningOn = (try? c.decode(Bool.self, forKey: .eveningOn)) ?? p.eveningOn
+        eveningAsWidget = (try? c.decode(Bool.self, forKey: .eveningAsWidget)) ?? p.eveningAsWidget
+        eveningMinutes = (try? c.decode(Int.self, forKey: .eveningMinutes)) ?? p.eveningMinutes
+        eveningWeekdays = (try? c.decode([Int].self, forKey: .eveningWeekdays)) ?? p.eveningWeekdays
+        nightOn = (try? c.decode(Bool.self, forKey: .nightOn)) ?? false
+        nightAsWidget = (try? c.decode(Bool.self, forKey: .nightAsWidget)) ?? false
+        nightStartMinutes = (try? c.decode(Int.self, forKey: .nightStartMinutes)) ?? p.nightStartMinutes
+        nightEndMinutes = (try? c.decode(Int.self, forKey: .nightEndMinutes)) ?? p.nightEndMinutes
+        nightWeekdays = (try? c.decode([Int].self, forKey: .nightWeekdays)) ?? p.nightWeekdays
+        eveningEndMinutes = (try? c.decode(Int.self, forKey: .eveningEndMinutes)) ?? p.eveningEndMinutes
+        activityKey = (try? c.decode(String.self, forKey: .activityKey)) ?? p.activityKey
+        activityTitle = (try? c.decode(String.self, forKey: .activityTitle)) ?? p.activityTitle
+        activityDetail = (try? c.decode(String.self, forKey: .activityDetail)) ?? p.activityDetail
+        storyMinutesLeft = (try? c.decode(Int.self, forKey: .storyMinutesLeft)) ?? 0
+    }
 
     static func load() -> WidgetSnapshot {
         guard let data = KomorebiShared.defaults.data(forKey: KomorebiShared.snapshotKey),
@@ -79,16 +134,20 @@ enum PromptMoment: String {
             let nightDay = (start <= end || minutes >= start) ? weekday : (weekday == 1 ? 7 : weekday - 1)
             if inWindow && s.nightWeekdays.contains(nightDay) { return .night }
         }
-        if s.eveningOn && s.eveningAsWidget && s.eveningWeekdays.contains(weekday) {
-            let start = s.eveningMinutes
-            if minutes >= start && minutes < min(start + 180, 24 * 60) { return .evening }
+        if s.eveningOn && s.eveningAsWidget {
+            let start = s.eveningMinutes, end = s.eveningEndMinutes
+            let crosses = end <= start
+            let inWindow = crosses ? (minutes >= start || minutes < end) : (minutes >= start && minutes < end)
+            // After midnight, the window belongs to the evening that started the day before.
+            let day = (crosses && minutes < end) ? (weekday == 1 ? 7 : weekday - 1) : weekday
+            if inWindow && s.eveningWeekdays.contains(day) { return .evening }
         }
         return .standard
     }
 
     /// Minute marks where the moment can change, used to build widget timelines.
     static func boundaries(snapshot s: WidgetSnapshot) -> [Int] {
-        var marks = [0, s.eveningMinutes, min(s.eveningMinutes + 180, 24 * 60 - 1), s.nightStartMinutes, s.nightEndMinutes]
+        var marks = [0, s.eveningMinutes, s.eveningEndMinutes, s.nightStartMinutes, s.nightEndMinutes]
         marks = Array(Set(marks)).sorted()
         return marks
     }

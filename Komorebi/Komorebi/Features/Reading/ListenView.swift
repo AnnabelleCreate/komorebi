@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Listening: LibriVox narration with a sleep timer, Lock Screen controls and a screen-off mode.
+/// Listening, laid out like the Figma prototype: cover, scrubber, controls, "Stop playing" sleep timer,
+/// "Still awake? Add time", and Turn screen off. Swipe down anywhere to close.
 struct ListenView: View {
     var story: Story
     @Environment(NarrationPlayer.self) private var player
@@ -12,50 +13,55 @@ struct ListenView: View {
     @State private var scrubValue: Double = 0
     @State private var screenOff = false
     @State private var savedBrightness: CGFloat?
+    @State private var dragOffset: CGFloat = 0
+
+    private let timerChoices: [NarrationPlayer.SleepTimer] = [.off, .endOfStory, .fifteen, .thirty]
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(hexString: story.palette.last ?? "#1C2139").opacity(0.55), Palette.background],
-                           startPoint: .top, endPoint: .center)
-                .ignoresSafeArea()
-            Palette.background.opacity(0.35).ignoresSafeArea()
-
-            VStack(spacing: 18) {
-                HStack {
-                    CircleIconButton(systemImage: "chevron.down", label: "Close player") { dismiss() }
-                    Spacer()
-                    Text("Listening").font(KFont.heading(17)).foregroundStyle(Palette.text)
-                    Spacer()
-                    CircleIconButton(systemImage: "book", label: "Read along instead") {
-                        player.pause()
-                        router.activity = .reader(story.id)
+            Palette.background.ignoresSafeArea()
+            VStack(spacing: 0) {
+                Capsule().fill(Palette.outlineStrong).frame(width: 40, height: 5).padding(.top, 6).accessibilityHidden(true)
+                header
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Image(story.coverImageName)
+                            .resizable().scaledToFill()
+                            .frame(width: 200, height: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .accessibilityHidden(true)
+                            .padding(.top, 8)
+                        VStack(spacing: 6) {
+                            Text(story.title).font(KFont.heading(28)).foregroundStyle(Palette.text).multilineTextAlignment(.center)
+                            Text("\(story.author) · LibriVox recording").font(KFont.body(14)).foregroundStyle(Palette.text2)
+                        }
+                        if let problem = player.problem, player.story?.id == story.id {
+                            problemCard(problem)
+                        } else if !player.isReady {
+                            LoadingView(message: "Getting the narrator ready…", style: .inline, delay: 0.3, slowAfter: 6,
+                                        slowMessage: "The narration is taking longer than usual to open.",
+                                        slowActionTitle: "Read the story instead",
+                                        slowAction: { router.activity = .reader(story.id) })
+                                .frame(maxWidth: .infinity, minHeight: 220)
+                        } else {
+                            scrubber
+                            transport
+                            sleepTimer
+                        }
                     }
+                    .padding(.horizontal, 16)
                 }
-                .padding(.top, 8)
-
-                StoryCover(story: story).frame(maxWidth: 210).padding(.top, 6)
-
-                VStack(spacing: 4) {
-                    Text(story.title).font(KFont.title(24)).foregroundStyle(Palette.text).multilineTextAlignment(.center)
-                    Text("\(story.author) · read by a LibriVox volunteer").font(KFont.body(14)).foregroundStyle(Palette.text2)
+                .scrollBounceBehavior(.basedOnSize)
+                VStack(spacing: 8) {
+                    Button("Turn screen off") { screenOn(false) }
+                        .buttonStyle(SecondaryButtonStyle())
+                    Text("Audio keeps playing and fades out gently.").font(KFont.body(14)).foregroundStyle(Palette.text3)
                 }
-
-                if let problem = player.problem, player.story?.id == story.id {
-                    problemCard(problem)
-                } else if !player.isReady {
-                    LoadingView(message: "Getting the narrator ready…", style: .inline, delay: 0.3, slowAfter: 6,
-                                slowMessage: "The narration is taking longer than usual to open.",
-                                slowActionTitle: "Read the story instead",
-                                slowAction: { router.activity = .reader(story.id) })
-                        .frame(maxWidth: .infinity, minHeight: 260)
-                } else {
-                    scrubber
-                    transport
-                    sleepTimer
-                }
-                Spacer(minLength: 0)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
             }
-            .padding(.horizontal, 20)
+            .offset(y: dragOffset)
+            .gesture(dismissDrag)
 
             if player.askStillAwake { stillAwake.transition(.opacity) }
             if screenOff { screenOffCover.transition(.opacity) }
@@ -68,6 +74,37 @@ struct ListenView: View {
             if player.problem == nil && !player.isPlaying { player.play() }
         }
         .onDisappear { restoreBrightness() }
+    }
+
+    /// Swipe down to close, like a music player.
+    private var dismissDrag: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { v in
+                if v.translation.height > 0 && abs(v.translation.height) > abs(v.translation.width) {
+                    dragOffset = reduce ? 0 : v.translation.height * 0.6
+                }
+            }
+            .onEnded { v in
+                if v.translation.height > 120 || v.predictedEndTranslation.height > 260 {
+                    dismiss()
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { dragOffset = 0 }
+                }
+            }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            CircleIconButton(systemImage: "xmark", label: "Close player") { dismiss() }
+            Text("Listening").font(KFont.heading(20)).foregroundStyle(Palette.text)
+            Spacer()
+            CircleIconButton(systemImage: "book", label: "Read along") {
+                // Keep playing and follow the words in the reader.
+                router.activity = .reader(story.id)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     private var scrubber: some View {
@@ -86,75 +123,112 @@ struct ListenView: View {
                 Spacer()
                 Text("-" + max(0, player.duration - (scrubbing ? scrubValue : player.elapsed)).playbackTime)
             }
-            .font(KFont.body(12, relativeTo: .caption))
-            .foregroundStyle(Palette.text3)
+            .font(KFont.body(14, relativeTo: .caption))
+            .foregroundStyle(Palette.text2)
             .monospacedDigit()
         }
     }
 
     private var transport: some View {
-        HStack(spacing: 28) {
-            Button {
-                let next: Float = player.rate >= 1 ? 0.8 : (player.rate < 0.85 ? 0.9 : 1.0)
-                player.setRate(next)
-                Haptics.shared.selection()
-            } label: {
-                Text(player.rate == 1 ? "1×" : String(format: "%.1f×", player.rate))
-                    .font(KFont.medium(15)).foregroundStyle(Palette.text)
-                    .frame(width: 48, height: 44)
-            }
-            .accessibilityLabel("Speed \(player.rate == 1 ? "normal" : String(format: "%.1f", player.rate))")
-
-            Button { player.skip(by: -15) } label: { Image(systemName: "gobackward.15").font(.system(size: 26)) }
+        HStack(spacing: 26) {
+            Spacer(minLength: 0)
+            Button { player.skip(by: -15) } label: { roundIcon("gobackward.15") }
                 .accessibilityLabel("Back 15 seconds")
             Button { player.toggle(); Haptics.shared.tap() } label: {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 28))
+                    .font(.system(size: 26))
                     .foregroundStyle(Palette.background)
                     .frame(width: 72, height: 72)
                     .background(Circle().fill(Palette.gold))
             }
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
-            Button { player.skip(by: 15) } label: { Image(systemName: "goforward.15").font(.system(size: 26)) }
+            Button { player.skip(by: 15) } label: { roundIcon("goforward.15") }
                 .accessibilityLabel("Forward 15 seconds")
-            Button { screenOn(false) } label: { Image(systemName: "moon.zzz").font(.system(size: 22)).frame(width: 48, height: 44) }
-                .accessibilityLabel("Screen off")
+            Button {
+                let next: Float = player.rate >= 1 ? 0.9 : (player.rate >= 0.89 ? 0.8 : 1.0)
+                player.setRate(next)
+                Haptics.shared.selection()
+            } label: {
+                Text(player.rate == 1 ? "1×" : String(format: "%.1f×", player.rate))
+                    .font(KFont.medium(14)).foregroundStyle(Palette.text)
+                    .frame(width: 48, height: 32)
+                    .overlay(Capsule().strokeBorder(Palette.text.opacity(0.8)))
+                    .frame(height: 44)
+            }
+            .accessibilityLabel("Speed \(player.rate == 1 ? "normal" : String(format: "%.1f", player.rate))")
+            Spacer(minLength: 0)
         }
-        .foregroundStyle(Palette.text)
         .buttonStyle(.plain)
     }
 
+    private func roundIcon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 18))
+            .foregroundStyle(Palette.text)
+            .frame(width: 44, height: 44)
+            .overlay(Circle().strokeBorder(Palette.text.opacity(0.8)))
+    }
+
     private var sleepTimer: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Sleep timer").font(KFont.medium(14)).foregroundStyle(Palette.text2)
+                Text("Stop playing").font(KFont.medium(16)).foregroundStyle(Palette.text)
                 Spacer()
                 if let end = player.sleepEndsAt, player.isPlaying {
-                    Text(timerInterval: Date()...max(Date(), end), countsDown: true)
-                        .font(KFont.body(13)).foregroundStyle(Palette.gold).monospacedDigit()
-                        .frame(maxWidth: 80, alignment: .trailing)
+                    HStack(spacing: 4) {
+                        Text("Fades out in")
+                        Text(timerInterval: Date()...max(Date(), end), countsDown: true).monospacedDigit()
+                    }
+                    .font(KFont.body(14)).foregroundStyle(Palette.gold)
                 }
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(NarrationPlayer.SleepTimer.allCases) { option in
-                        FilterChip(title: option.label, selected: player.sleepTimer == option) {
+                    ForEach(timerChoices) { option in
+                        let on = player.sleepTimer == option
+                        Button {
                             player.setSleepTimer(option)
                             Haptics.shared.selection()
+                        } label: {
+                            Text(option.label)
+                                .font(on ? KFont.medium(14) : KFont.body(14))
+                                .foregroundStyle(on ? Palette.background : Palette.text)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 36)
+                                .background(Capsule().fill(on ? Palette.surface : .clear))
+                                .overlay(Capsule().strokeBorder(on ? .clear : Palette.text.opacity(0.7)))
+                                .frame(minHeight: 44)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(on ? .isSelected : [])
                     }
                 }
             }
-            Text("The voice fades out gently when the timer ends.").font(KFont.body(12, relativeTo: .caption)).foregroundStyle(Palette.text3)
+            if player.sleepEndsAt != nil {
+                HStack {
+                    Text("Still awake? Add time").font(KFont.body(14)).foregroundStyle(Palette.text2)
+                    Spacer()
+                    ForEach([5.0, 15.0], id: \.self) { m in
+                        Button { player.addTime(minutes: m) } label: {
+                            Text("+ \(Int(m)) min").font(KFont.medium(14)).foregroundStyle(Palette.gold)
+                                .padding(.horizontal, 14).frame(minHeight: 36)
+                                .overlay(Capsule().strokeBorder(Palette.gold))
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add \(Int(m)) minutes")
+                    }
+                }
+                .transition(.opacity)
+            }
         }
-        .padding(16)
-        .kCard(radius: 16, raised: false)
+        .animation(Motion.ease(reduce), value: player.sleepEndsAt != nil)
     }
 
     private func problemCard(_ message: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "speaker.slash").font(.system(size: 26)).foregroundStyle(Palette.gold)
-            Text(message).font(KFont.body(15)).foregroundStyle(Palette.text).multilineTextAlignment(.center)
+            Text(message).font(KFont.body(16)).foregroundStyle(Palette.text).multilineTextAlignment(.center)
             Button("Read the story") { router.activity = .reader(story.id) }.buttonStyle(PrimaryButtonStyle())
         }
         .padding(20)
@@ -163,12 +237,12 @@ struct ListenView: View {
 
     private var stillAwake: some View {
         VStack(spacing: 14) {
-            Text("Still awake?").font(KFont.title(26)).foregroundStyle(Palette.text)
-            Text("The story paused where you left off.").font(KFont.body(15)).foregroundStyle(Palette.text2)
+            Text("Still awake?").font(KFont.heading(24)).foregroundStyle(Palette.text)
+            Text("The story paused where you left off. You’ll find it on Tonight.").font(KFont.body(16)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
             Button("15 more minutes") { player.addFifteenMinutes() }.buttonStyle(PrimaryButtonStyle())
             Button("Goodnight") {
                 player.askStillAwake = false
-                player.stop()
+                player.pause()
                 dismiss()
             }
             .buttonStyle(SecondaryButtonStyle())
@@ -184,7 +258,7 @@ struct ListenView: View {
         Color.black
             .ignoresSafeArea()
             .overlay(alignment: .bottom) {
-                Text("Tap anywhere to wake").font(KFont.body(13)).foregroundStyle(Color.white.opacity(0.18)).padding(.bottom, 40)
+                Text("Tap anywhere to wake").font(KFont.body(14)).foregroundStyle(Color.white.opacity(0.18)).padding(.bottom, 40)
             }
             .onTapGesture { screenOn(true) }
             .accessibilityElement()

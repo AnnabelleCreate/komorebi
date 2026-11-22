@@ -47,12 +47,14 @@ final class PromptScheduler {
             let ids = requests.map(\.identifier).filter { $0.hasPrefix(self.prefix) }
             self.center.removePendingNotificationRequests(withIdentifiers: ids)
 
-            if evening.isOn && evening.style == .notification {
+            if evening.isOn && evening.sendsNotification {
+                let state = AppStore.shared.state
+                let goTo = ActivityItem.from(key: state.widgetKey) ?? ActivityItem(kind: .garden)
                 for day in evening.activeWeekdays {
                     self.add(id: "evening.\(day)", weekday: day, minutes: evening.startMinutes,
                              title: "A little less to carry",
-                             body: "Tonight’s suggestion: Lantern release, about 2 minutes. Or tap to see what else is waiting.",
-                             link: KomorebiLink.tonight, passive: false)
+                             body: "Your go-to: \(goTo.title). Whenever you’re ready, no rush.",
+                             link: KomorebiLink.open(goTo.id), passive: false)
                 }
             }
             if night.isOn && night.style == .notification {
@@ -89,10 +91,10 @@ final class PromptScheduler {
     /// Sends one prompt in a few seconds so people can see what it looks like.
     func sendPreview(night: Bool) {
         let content = UNMutableNotificationContent()
-        content.title = night ? "Still awake?" : "A little less to carry"
-        content.body = night ? "A slow sand garden can help you drift back to sleep. No need to reply."
-                             : "Tonight’s suggestion: Lantern release, about 2 minutes."
-        content.userInfo = ["link": (night ? KomorebiLink.garden : KomorebiLink.tonight).absoluteString]
+        let goTo = ActivityItem.from(key: AppStore.shared.state.widgetKey) ?? ActivityItem(kind: .garden)
+        content.title = "A little less to carry"
+        content.body = "Your go-to: \(goTo.title). Whenever you’re ready, no rush."
+        content.userInfo = ["link": KomorebiLink.open(goTo.id).absoluteString]
         content.interruptionLevel = .active
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
         center.add(UNNotificationRequest(identifier: prefix + "preview", content: content, trigger: trigger))

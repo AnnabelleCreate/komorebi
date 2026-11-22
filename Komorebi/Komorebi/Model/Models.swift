@@ -123,7 +123,11 @@ struct PromptSchedule: Codable, Equatable {
     var endMinutes: Int
 
     static let eveningDefault = PromptSchedule(isOn: true, style: .notification, days: .every, customDays: [2, 3, 4, 5, 6], startMinutes: 20 * 60, endMinutes: 22 * 60)
-    static let nightDefault = PromptSchedule(isOn: true, style: .widget, days: .every, customDays: Array(1...7), startMinutes: 60, endMinutes: 5 * 60)
+    /// The separate night prompt was retired; one wind-down schedule now drives the widget and the notification.
+    static let nightDefault = PromptSchedule(isOn: false, style: .widget, days: .every, customDays: Array(1...7), startMinutes: 60, endMinutes: 5 * 60)
+
+    /// Whether a quiet notification is also sent at the start of the window (the widget always follows the schedule).
+    var sendsNotification: Bool { style == .notification }
 
     var activeWeekdays: [Int] { days == .every ? Array(1...7) : customDays.sorted() }
 }
@@ -226,8 +230,19 @@ struct AppState: Codable, Equatable {
     var audioPositions: [String: Double] = [:]
     var lastStoryID: String?
     var keptLines: [KeptLine] = []
+    /// The favorite shown first on Tonight ("Your go-to").
+    var goTo: String? = "garden"
+    /// The activity the widget opens. nil means "same as my go-to".
+    var widgetActivity: String?
+    /// The story last narrated, so a paused story can be picked up from Tonight.
+    var lastListenedID: String?
+    /// Bookmarked sentence index per story.
+    var bookmarks: [String: Int] = [:]
 
     init() {}
+
+    /// The activity key the widget should open.
+    var widgetKey: String { widgetActivity ?? goTo ?? favorites.first ?? "garden" }
 
     /// Decodes field by field so an older or partly damaged save never wipes everything.
     init(from decoder: Decoder) throws {
@@ -248,5 +263,10 @@ struct AppState: Codable, Equatable {
         audioPositions = (try? c.decode([String: Double].self, forKey: .audioPositions)) ?? d.audioPositions
         lastStoryID = try? c.decode(String.self, forKey: .lastStoryID)
         keptLines = (try? c.decode([KeptLine].self, forKey: .keptLines)) ?? d.keptLines
+        goTo = (try? c.decodeIfPresent(String.self, forKey: .goTo)) ?? d.goTo
+        widgetActivity = try? c.decode(String.self, forKey: .widgetActivity)
+        lastListenedID = try? c.decode(String.self, forKey: .lastListenedID)
+        bookmarks = (try? c.decode([String: Int].self, forKey: .bookmarks)) ?? d.bookmarks
+        night.isOn = false
     }
 }

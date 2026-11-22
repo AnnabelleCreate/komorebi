@@ -74,7 +74,7 @@ struct SecondaryButtonStyle: ButtonStyle {
 struct GhostButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(KFont.medium(15))
+            .font(KFont.medium(16))
             .foregroundStyle(Palette.gold)
             .frame(minHeight: 44)
             .opacity(configuration.isPressed ? 0.6 : 1)
@@ -133,7 +133,7 @@ struct ActivityTag: View {
     var body: some View {
         HStack(spacing: 5) {
             if let systemImage { Image(systemName: systemImage).font(.system(size: 12, weight: .medium)) }
-            Text(text).font(KFont.body(13, relativeTo: .caption))
+            Text(text).font(KFont.body(14, relativeTo: .caption))
         }
         .padding(.horizontal, 9)
         .frame(minHeight: 28)
@@ -172,7 +172,7 @@ struct ScreenTitle: View {
                 .foregroundStyle(Palette.text)
                 .accessibilityAddTraits(.isHeader)
             if let subtitle {
-                Text(subtitle).font(KFont.body(15)).foregroundStyle(Palette.text2)
+                Text(subtitle).font(KFont.body(16)).foregroundStyle(Palette.text2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -183,7 +183,7 @@ struct SectionLabel: View {
     var text: String
     var body: some View {
         Text(text.uppercased())
-            .font(KFont.medium(12, relativeTo: .caption))
+            .font(KFont.medium(14, relativeTo: .caption))
             .tracking(1.6)
             .foregroundStyle(Palette.gold)
             .accessibilityAddTraits(.isHeader)
@@ -194,7 +194,7 @@ struct Eyebrow: View {
     var text: String
     var body: some View {
         Text(text.uppercased())
-            .font(KFont.medium(12, relativeTo: .caption))
+            .font(KFont.medium(14, relativeTo: .caption))
             .tracking(1.6)
             .foregroundStyle(Palette.gold)
     }
@@ -245,7 +245,7 @@ struct SettingRow<Trailing: View>: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(KFont.body(16)).foregroundStyle(Palette.text)
-                if let detail { Text(detail).font(KFont.body(13, relativeTo: .footnote)).foregroundStyle(Palette.text2) }
+                if let detail { Text(detail).font(KFont.body(14, relativeTo: .footnote)).foregroundStyle(Palette.text2) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             trailing
@@ -289,7 +289,7 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: systemImage).font(.system(size: 30)).foregroundStyle(Palette.gold)
-            Text(title).font(KFont.heading(18)).foregroundStyle(Palette.text)
+            Text(title).font(KFont.heading(20)).foregroundStyle(Palette.text)
             Text(message).font(KFont.body(14)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
             if let actionTitle, let action {
                 Button(actionTitle, action: action).buttonStyle(SecondaryButtonStyle(fullWidth: false)).padding(.top, 4)

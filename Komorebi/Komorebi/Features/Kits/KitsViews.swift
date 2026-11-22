@@ -49,8 +49,8 @@ struct KitContents: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon).foregroundStyle(Palette.gold).frame(width: 26)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(KFont.medium(15)).foregroundStyle(Palette.text)
-                Text(detail).font(KFont.body(13)).foregroundStyle(Palette.text2)
+                Text(title).font(KFont.medium(16)).foregroundStyle(Palette.text)
+                Text(detail).font(KFont.body(14)).foregroundStyle(Palette.text2)
             }
         }
         .accessibilityElement(children: .combine)
@@ -87,7 +87,7 @@ struct KitsHome: View {
                 Button { path.append(.orders) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Your orders").font(KFont.heading(17)).foregroundStyle(Palette.text)
+                            Text("Your orders").font(KFont.heading(20)).foregroundStyle(Palette.text)
                             Text(store.state.orders.isEmpty ? "Nothing ordered yet" : "Track a delivery, skip or cancel")
                                 .font(KFont.body(14)).foregroundStyle(Palette.text2)
                         }
@@ -116,11 +116,11 @@ struct KitDetailView: View {
                 ArtImage(name: "art-kit").frame(height: 170).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 Text("Quiet hands, slow evening").font(KFont.title(28)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
                 Text("A box for the evenings you’d rather not look at a screen. Trace the sand tray while a story plays, or read one of the paperbacks in bed.")
-                    .font(KFont.body(15)).foregroundStyle(Palette.text2)
+                    .font(KFont.body(16)).foregroundStyle(Palette.text2)
                 KitContents().padding(16).kCard()
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(CheckoutModel.priceCents.dollars) · shipping and tax included").font(KFont.medium(16)).foregroundStyle(Palette.text)
-                    Text("Same price once or monthly. No discounts to chase, no add-ons.").font(KFont.body(13)).foregroundStyle(Palette.text2)
+                    Text("Same price once or monthly. No discounts to chase, no add-ons.").font(KFont.body(14)).foregroundStyle(Palette.text2)
                 }
                 Button("Get this kit") { startCheckout() }.buttonStyle(PrimaryButtonStyle())
             }
@@ -158,9 +158,9 @@ struct HowOftenView: View {
                     .font(.system(size: 22)).foregroundStyle(on ? Palette.gold : Palette.outlineStrong)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(title).font(KFont.heading(17)).foregroundStyle(Palette.text)
+                        Text(title).font(KFont.heading(20)).foregroundStyle(Palette.text)
                         Spacer()
-                        Text(CheckoutModel.priceCents.dollars + (plan == .monthly ? " / month" : "")).font(KFont.medium(15)).foregroundStyle(Palette.text)
+                        Text(CheckoutModel.priceCents.dollars + (plan == .monthly ? " / month" : "")).font(KFont.medium(16)).foregroundStyle(Palette.text)
                     }
                     Text(detail).font(KFont.body(14)).foregroundStyle(Palette.text2)
                 }
@@ -182,7 +182,7 @@ struct BagView: View {
             HStack(spacing: 14) {
                 ArtImage(name: "art-kit").frame(width: 90, height: 70).clipShape(RoundedRectangle(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Quiet hands, slow evening").font(KFont.heading(17)).foregroundStyle(Palette.text)
+                    Text("Quiet hands, slow evening").font(KFont.heading(20)).foregroundStyle(Palette.text)
                     Text(model.plan == .monthly ? "Every month" : "Just this once").font(KFont.body(14)).foregroundStyle(Palette.text2)
                 }
             }
@@ -208,9 +208,9 @@ struct BagView: View {
 
     private func line(_ a: String, _ b: String, bold: Bool = false) -> some View {
         HStack {
-            Text(a).font(bold ? KFont.medium(16) : KFont.body(15)).foregroundStyle(Palette.text)
+            Text(a).font(bold ? KFont.medium(16) : KFont.body(16)).foregroundStyle(Palette.text)
             Spacer()
-            Text(b).font(bold ? KFont.medium(16) : KFont.body(15)).foregroundStyle(Palette.text)
+            Text(b).font(bold ? KFont.medium(16) : KFont.body(16)).foregroundStyle(Palette.text)
         }
     }
 }
@@ -226,7 +226,7 @@ struct CheckoutField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(label).font(KFont.medium(13)).foregroundStyle(Palette.text2)
+            Text(label).font(KFont.medium(14)).foregroundStyle(Palette.text2)
             TextField("", text: $text)
                 .font(KFont.body(16))
                 .foregroundStyle(Palette.text)
@@ -241,7 +241,7 @@ struct CheckoutField: View {
                 .accessibilityLabel(label)
                 .accessibilityHint(error ?? "")
             if let error {
-                Label(error, systemImage: "exclamationmark.circle").font(KFont.body(13)).foregroundStyle(Palette.warm)
+                Label(error, systemImage: "exclamationmark.circle").font(KFont.body(14)).foregroundStyle(Palette.warm)
             }
         }
     }
@@ -253,8 +253,8 @@ struct ShippingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Step 1 of 3").font(KFont.body(13)).foregroundStyle(Palette.text3)
-                Text("Where should it go?").font(KFont.title(26)).foregroundStyle(Palette.text)
+                Text("Step 1 of 3").font(KFont.body(14)).foregroundStyle(Palette.text3)
+                Text("Where should it go?").font(KFont.title(24)).foregroundStyle(Palette.text)
                 CheckoutField(label: "Full name", text: $model.address.name, error: model.addressErrors["name"], content: .name)
                 CheckoutField(label: "Street address", text: $model.address.street, error: model.addressErrors["street"], content: .streetAddressLine1)
                 CheckoutField(label: "Apartment, suite (optional)", text: $model.address.apartment, error: nil, content: .streetAddressLine2)
@@ -264,9 +264,9 @@ struct ShippingView: View {
                         .frame(width: 120)
                     CheckoutField(label: "ZIP code", text: $model.address.zip, error: model.addressErrors["zip"], content: .postalCode, keyboard: .numbersAndPunctuation, capitalization: .never)
                 }
-                Toggle(isOn: $model.saveAddress) { Text("Remember this address on this phone").font(KFont.body(15)).foregroundStyle(Palette.text) }
+                Toggle(isOn: $model.saveAddress) { Text("Remember this address on this phone").font(KFont.body(16)).foregroundStyle(Palette.text) }
                     .tint(Palette.gold)
-                Text("Ships within the US. Arrives in 3–7 days.").font(KFont.body(13)).foregroundStyle(Palette.text3)
+                Text("Ships within the US. Arrives in 3–7 days.").font(KFont.body(14)).foregroundStyle(Palette.text3)
                 Button("Continue to payment") {
                     if model.validateAddress() {
                         path.append(.payment)
@@ -293,12 +293,12 @@ struct PaymentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Step 2 of 3").font(KFont.body(13)).foregroundStyle(Palette.text3)
-                Text("Payment").font(KFont.title(26)).foregroundStyle(Palette.text)
+                Text("Step 2 of 3").font(KFont.body(14)).foregroundStyle(Palette.text3)
+                Text("Payment").font(KFont.title(24)).foregroundStyle(Palette.text)
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "testtube.2").foregroundStyle(Palette.gold)
                     Text("Beta test mode: no money is taken. Use 4242 4242 4242 4242 with any future date and any 3 digits.")
-                        .font(KFont.body(13)).foregroundStyle(Palette.text)
+                        .font(KFont.body(14)).foregroundStyle(Palette.text)
                 }
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 12).fill(Palette.gold.opacity(0.12)))
@@ -340,8 +340,8 @@ struct ReviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Step 3 of 3").font(KFont.body(13)).foregroundStyle(Palette.text3)
-                Text("Review").font(KFont.title(26)).foregroundStyle(Palette.text)
+                Text("Step 3 of 3").font(KFont.body(14)).foregroundStyle(Palette.text3)
+                Text("Review").font(KFont.title(24)).foregroundStyle(Palette.text)
                 summaryRow("Kit", model.plan == .monthly ? "Quiet hands, slow evening · every month" : "Quiet hands, slow evening · once", step: .often)
                 summaryRow("Ship to", "\(model.address.name), \(model.address.oneLine)", step: .shipping)
                 summaryRow("Arrives", "\(Date().addingTimeInterval(3 * 86400).formatted(.dateTime.weekday().month().day())) – \(Date().addingTimeInterval(7 * 86400).formatted(.dateTime.weekday().month().day()))", step: nil)
@@ -373,7 +373,7 @@ struct ReviewView: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.isPaying)
                 .padding(.top, 6)
-                Text("Beta prototype: test mode, no real payment is taken.").font(KFont.body(12)).foregroundStyle(Palette.text3).frame(maxWidth: .infinity)
+                Text("Beta prototype: test mode, no real payment is taken.").font(KFont.body(14)).foregroundStyle(Palette.text3).frame(maxWidth: .infinity)
             }
             .padding(16)
         }
@@ -385,8 +385,8 @@ struct ReviewView: View {
     private func summaryRow(_ title: String, _ value: String, step: KitStep?) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(KFont.medium(13)).foregroundStyle(Palette.text2)
-                Text(value).font(KFont.body(15)).foregroundStyle(Palette.text)
+                Text(title).font(KFont.medium(14)).foregroundStyle(Palette.text2)
+                Text(value).font(KFont.body(16)).foregroundStyle(Palette.text)
             }
             Spacer()
             if let step {
@@ -418,7 +418,7 @@ struct ConfirmedView: View {
                     Text(order.plan == .monthly
                          ? "Order \(order.number). \(order.totalCents.dollars) paid today (test mode). We’ll remind you 3 days before the next box."
                          : "Order \(order.number). \(order.totalCents.dollars) paid (test mode). Nothing else will be charged.")
-                        .font(KFont.body(15)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
+                        .font(KFont.body(16)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
                     OrderCard(order: order, showActions: false)
                 }
                 Button("Back to kits") { path = [] }.buttonStyle(PrimaryButtonStyle())
@@ -444,10 +444,10 @@ struct OrderCard: View {
             HStack {
                 Text("Order \(order.number)").font(KFont.medium(16)).foregroundStyle(Palette.text)
                 Spacer()
-                Text(order.totalCents.dollars).font(KFont.body(15)).foregroundStyle(Palette.text)
+                Text(order.totalCents.dollars).font(KFont.body(16)).foregroundStyle(Palette.text)
             }
             Text("Placed \(order.placedAt.formatted(date: .abbreviated, time: .omitted)) · \(order.paymentSummary)")
-                .font(KFont.body(13)).foregroundStyle(Palette.text3)
+                .font(KFont.body(14)).foregroundStyle(Palette.text3)
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(KitOrder.Stage.allCases, id: \.rawValue) { stage in
                     let reached = stage.rawValue <= order.stage.rawValue
@@ -455,7 +455,7 @@ struct OrderCard: View {
                         Circle().fill(reached ? Palette.gold : Palette.outline).frame(width: 10, height: 10)
                         Text(stage.label).font(KFont.body(14)).foregroundStyle(reached ? Palette.text : Palette.text3)
                         Spacer()
-                        Text(stageDate(stage)).font(KFont.body(13)).foregroundStyle(Palette.text3)
+                        Text(stageDate(stage)).font(KFont.body(14)).foregroundStyle(Palette.text3)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityValue(reached ? "done" : "")
@@ -524,7 +524,7 @@ struct OrdersView: View {
                                message: "When you get a kit, you can track it, skip a month or cancel here.")
                 } else {
                     ForEach(store.state.orders) { order in OrderCard(order: order, showActions: true) }
-                    Text("Beta: orders are saved on this phone. Payments ran in test mode.").font(KFont.body(12)).foregroundStyle(Palette.text3)
+                    Text("Beta: orders are saved on this phone. Payments ran in test mode.").font(KFont.body(14)).foregroundStyle(Palette.text3)
                 }
             }
             .padding(16)

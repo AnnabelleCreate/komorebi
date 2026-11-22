@@ -33,11 +33,11 @@ struct LoadingView: View {
                     }
                     VStack(spacing: 8) {
                         Text(message)
-                            .font(KFont.body(15))
+                            .font(KFont.body(16))
                             .foregroundStyle(Palette.text2)
                         if slow {
                             Text(slowMessage)
-                                .font(KFont.body(13))
+                                .font(KFont.body(14))
                                 .foregroundStyle(Palette.text3)
                                 .transition(.opacity)
                             if let slowActionTitle, let slowAction {

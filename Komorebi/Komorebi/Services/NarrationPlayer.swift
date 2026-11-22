@@ -53,6 +53,14 @@ final class NarrationPlayer {
 
     private init() {
         configureRemoteCommands()
+        ListeningControl.handler = { [weak self] action in
+            guard let self else { return }
+            switch action {
+            case "add15": self.addTime(minutes: 15)
+            case "stop": self.pause(); LiveActivityManager.shared.end()
+            default: self.toggle()
+            }
+        }
         let center = NotificationCenter.default
         center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
             self?.handleInterruption(note)
@@ -130,7 +138,10 @@ final class NarrationPlayer {
         player.playImmediately(atRate: rate)
         isPlaying = true
         askStillAwake = false
-        if let story { AppStore.shared.state.lastStoryID = story.id }
+        if let story {
+            AppStore.shared.state.lastStoryID = story.id
+            AppStore.shared.state.lastListenedID = story.id
+        }
         updateNowPlaying()
         LiveActivityManager.shared.startOrUpdate(story: story, state: liveState)
     }
@@ -227,6 +238,15 @@ final class NarrationPlayer {
         }
     }
 
+    /// "Still awake? Add time": pushes the fade-out later.
+    func addTime(minutes: Double) {
+        let base = max(Date(), sleepEndsAt ?? Date())
+        sleepEndsAt = base.addingTimeInterval(minutes * 60)
+        if sleepTimer == .off || sleepTimer == .endOfStory { sleepTimer = .thirty }
+        Haptics.shared.selection()
+        LiveActivityManager.shared.startOrUpdate(story: story, state: liveState)
+    }
+
     func addFifteenMinutes() {
         askStillAwake = false
         setSleepTimer(.fifteen)
@@ -248,7 +268,8 @@ final class NarrationPlayer {
     }
 
     private var liveState: ListeningAttributes.ContentState {
-        ListeningAttributes.ContentState(isPlaying: isPlaying, sleepEndsAt: sleepEndsAt, elapsed: elapsed, duration: duration)
+        ListeningAttributes.ContentState(isPlaying: isPlaying, sleepEndsAt: sleepEndsAt, elapsed: elapsed, duration: duration,
+                                         playStartedAt: isPlaying ? Date().addingTimeInterval(-elapsed / Double(max(rate, 0.1))) : nil)
     }
 
     // MARK: Interruptions & Lock Screen

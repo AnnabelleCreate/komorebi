@@ -9,29 +9,30 @@ struct SettingsView: View {
         @Bindable var store = store
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                // MARK: Prompts
-                Text("Activity prompts").font(KFont.heading(19)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
-                Text("Gentle nudges toward an activity, never streaks. Choose a quiet notification, or let the Lock Screen widget change at that time instead.")
+                // MARK: Notification preferences (one schedule drives the widget and the notification)
+                Text("Notification Preferences").font(KFont.heading(20)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
+                Text("Choose your wind-down time. During it, the Komorebi widget suggests your go-to activity, and you can get one quiet notification. Never streaks.")
                     .font(KFont.body(14)).foregroundStyle(Palette.text2)
-                if prompts.permission == .denied && (usesNotifications(store.state.evening) || usesNotifications(store.state.night)) {
+                if prompts.permission == .denied && store.state.evening.isOn && store.state.evening.sendsNotification {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "bell.slash").foregroundStyle(Palette.warm)
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Notifications are off for Komorebi in iPhone Settings, so prompts can’t arrive. You can turn them on, or show prompts on the Lock Screen widget.")
-                                .font(KFont.body(13)).foregroundStyle(Palette.text)
+                            Text("Notifications are off for Komorebi in iPhone Settings. The widget still follows your schedule.")
+                                .font(KFont.body(14)).foregroundStyle(Palette.text)
                             Button("Open iPhone Settings") { prompts.openSystemSettings() }.buttonStyle(GhostButtonStyle())
                         }
                     }
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Palette.warm.opacity(0.12)))
                 }
-                PromptEditor(title: "Evening prompt", icon: "flame", detail: "A suggestion for tonight’s wind-down",
-                             schedule: $store.state.evening, isNight: false)
-                PromptEditor(title: "Night prompt", icon: "moon", detail: "Waits quietly if you pick up your phone in the night",
-                             schedule: $store.state.night, isNight: true)
+                PromptEditor(schedule: $store.state.evening)
+
+                // MARK: Widget
+                Text("Widget").font(KFont.heading(20)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
+                WidgetPicker()
 
                 // MARK: Accessibility
-                Text("Accessibility").font(KFont.heading(19)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
+                Text("Accessibility").font(KFont.heading(20)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
                 Text("Applies to every activity: stories, the sand garden and the lantern.").font(KFont.body(14)).foregroundStyle(Palette.text2)
 
                 SectionLabel(text: "Seeing")
@@ -44,21 +45,21 @@ struct SettingsView: View {
                     RowDivider()
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Activity light").font(KFont.body(16)).foregroundStyle(Palette.text)
-                        Text("Dark sand for night, or lighter sand").font(KFont.body(13)).foregroundStyle(Palette.text2)
+                        Text("Dark sand for night, or lighter sand").font(KFont.body(14)).foregroundStyle(Palette.text2)
                         PillPicker(options: GardenLight.allCases.map { ($0, $0.label) }, selection: $store.state.settings.gardenLight, label: "Activity light")
                     }
                     .padding(16)
                     RowDivider()
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Warm screen").font(KFont.body(16)).foregroundStyle(Palette.text)
-                        Text("An amber tint everywhere outside the reader, which has its own").font(KFont.body(13)).foregroundStyle(Palette.text2)
+                        Text("An amber tint everywhere outside the reader, which has its own").font(KFont.body(14)).foregroundStyle(Palette.text2)
                         Slider(value: $store.state.settings.warmScreen, in: 0...1).tint(Palette.gold).accessibilityLabel("Warm screen")
                     }
                     .padding(16)
                     RowDivider()
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Reduce motion").font(KFont.body(16)).foregroundStyle(Palette.text)
-                        Text("Soft fades instead of sliding, zooming or spinning").font(KFont.body(13)).foregroundStyle(Palette.text2)
+                        Text("Soft fades instead of sliding, zooming or spinning").font(KFont.body(14)).foregroundStyle(Palette.text2)
                         PillPicker(options: MotionPreference.allCases.map { ($0, $0.label) }, selection: $store.state.settings.reduceMotion, label: "Reduce motion")
                     }
                     .padding(16)
@@ -69,7 +70,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Steady touch").font(KFont.body(16)).foregroundStyle(Palette.text)
                         Text("Smooths shaky or tremoring hands wherever you draw, trace or rake. Steadiest is on by default, so nobody has to ask for it.")
-                            .font(KFont.body(13)).foregroundStyle(Palette.text2)
+                            .font(KFont.body(14)).foregroundStyle(Palette.text2)
                         PillPicker(options: SteadyLevel.allCases.map { ($0, $0.label) }, selection: $store.state.settings.steady, label: "Steady touch")
                     }
                     .padding(16)
@@ -106,7 +107,7 @@ struct SettingsView: View {
                 }
 
                 // MARK: Kept lines
-                Text("Lines you kept").font(KFont.heading(19)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
+                Text("Lines you kept").font(KFont.heading(20)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
                 SettingsGroup {
                     if store.state.keptLines.isEmpty {
                         SettingRow(title: "Nothing kept yet", detail: "When you finish a story, you can keep a line you liked.") { EmptyView() }
@@ -117,7 +118,7 @@ struct SettingsView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("“\(line.text)”").font(KFont.reading(16, serif: true)).foregroundStyle(Palette.text)
                                     if let story = StoryLibrary.shared.story(line.storyID) {
-                                        Text("\(story.title) · \(story.author)").font(KFont.body(12)).foregroundStyle(Palette.text3)
+                                        Text("\(story.title) · \(story.author)").font(KFont.body(14)).foregroundStyle(Palette.text3)
                                     }
                                 }
                                 Spacer()
@@ -134,7 +135,7 @@ struct SettingsView: View {
                 }
 
                 // MARK: More
-                Text("More").font(KFont.heading(19)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
+                Text("More").font(KFont.heading(20)).foregroundStyle(Palette.text).padding(.top, 10).accessibilityAddTraits(.isHeader)
                 SettingsGroup {
                     NavigationLink { OrdersView() } label: {
                         SettingRow(title: "Your orders", detail: "Track, skip or cancel") { Image(systemName: "chevron.right").foregroundStyle(Palette.text2) }
@@ -153,7 +154,7 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
 
                 Text("Lantern thoughts are never saved. No streaks, no history.")
-                    .font(KFont.body(13)).foregroundStyle(Palette.text3).frame(maxWidth: .infinity).padding(.top, 8)
+                    .font(KFont.body(14)).foregroundStyle(Palette.text3).frame(maxWidth: .infinity).padding(.top, 8)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 30)
@@ -170,37 +171,31 @@ struct SettingsView: View {
         .onAppear { prompts.refreshAuthorizationStatus() }
     }
 
-    private func usesNotifications(_ s: PromptSchedule) -> Bool { s.isOn && s.style == .notification }
 }
 
-/// Edits one prompt: on/off, days, time, and how it appears.
+/// The wind-down schedule, laid out like the Figma Settings screen: Scheduled, days, and a time window.
 struct PromptEditor: View {
-    var title: String
-    var icon: String
-    var detail: String
     @Binding var schedule: PromptSchedule
-    var isNight: Bool
     @Environment(PromptScheduler.self) private var prompts
 
     private let days = [(1, "S", "Sunday"), (2, "M", "Monday"), (3, "T", "Tuesday"), (4, "W", "Wednesday"), (5, "T", "Thursday"), (6, "F", "Friday"), (7, "S", "Saturday")]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon).font(KFont.heading(17)).foregroundStyle(Palette.text).padding(.top, 6)
+        VStack(alignment: .leading, spacing: 12) {
             SettingsGroup {
-                SettingRow(title: "Scheduled", detail: detail) {
+                SettingRow(title: "Scheduled", detail: nil) {
                     Toggle("", isOn: Binding(get: { schedule.isOn }, set: { on in
                         schedule.isOn = on
-                        if on && schedule.style == .notification && prompts.permission == .notDetermined { prompts.requestPermission() }
+                        if on && schedule.sendsNotification && prompts.permission == .notDetermined { prompts.requestPermission() }
                     }))
-                    .labelsHidden().tint(Palette.gold).accessibilityLabel("\(title) scheduled")
+                    .labelsHidden().tint(Palette.gold).accessibilityLabel("Scheduled")
                 }
             }
             Group {
                 SettingsGroup {
-                    dayRow(.every, isNight ? "Every night" : "Every day")
+                    dayRow(.every, "Every Day")
                     RowDivider()
-                    dayRow(.custom, "Customize days")
+                    dayRow(.custom, "Customize Days")
                     if schedule.days == .custom {
                         HStack(spacing: 4) {
                             ForEach(days.indices, id: \.self) { index in
@@ -226,36 +221,25 @@ struct PromptEditor: View {
                     }
                 }
                 SettingsGroup {
-                    if isNight {
-                        timeRow("From", minutes: $schedule.startMinutes)
-                        RowDivider()
-                        timeRow("Until", minutes: $schedule.endMinutes)
-                    } else {
-                        timeRow("Time", minutes: $schedule.startMinutes)
-                    }
+                    timeRow("From", minutes: $schedule.startMinutes)
+                    RowDivider()
+                    timeRow("Until", minutes: $schedule.endMinutes)
                 }
                 SettingsGroup {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Show as").font(KFont.body(16)).foregroundStyle(Palette.text)
-                        PillPicker(options: [(PromptStyle.notification, "Notification"), (PromptStyle.widget, "Lock Screen widget")],
-                                   selection: Binding(get: { schedule.style }, set: { style in
-                                       schedule.style = style
-                                       if style == .notification && prompts.permission == .notDetermined { prompts.requestPermission() }
-                                   }), label: "\(title) style")
-                        Text(schedule.style == .notification
-                             ? (isNight ? "A silent notification that waits on your Lock Screen; it never lights the screen or makes a sound."
-                                        : "One quiet notification with no sound.")
-                             : "Add the Komorebi Sand garden widget to your Lock Screen. It changes to this prompt at the time you chose.")
-                            .font(KFont.body(13)).foregroundStyle(Palette.text2)
+                    SettingRow(title: "Quiet notification", detail: "One notification with no sound when your wind-down time starts") {
+                        Toggle("", isOn: Binding(get: { schedule.sendsNotification }, set: { on in
+                            schedule.style = on ? .notification : .widget
+                            if on && prompts.permission == .notDetermined { prompts.requestPermission() }
+                        }))
+                        .labelsHidden().tint(Palette.gold).accessibilityLabel("Quiet notification")
                     }
-                    .padding(16)
-                    if schedule.style == .notification {
+                    if schedule.sendsNotification {
                         RowDivider()
                         Button {
                             if prompts.permission == .allowed {
-                                prompts.sendPreview(night: isNight)
+                                prompts.sendPreview(night: false)
                             } else {
-                                prompts.requestPermission { granted in if granted { prompts.sendPreview(night: isNight) } }
+                                prompts.requestPermission { granted in if granted { prompts.sendPreview(night: false) } }
                             }
                         } label: {
                             SettingRow(title: "Send a preview", detail: "Arrives in 5 seconds") {
@@ -303,6 +287,46 @@ struct PromptEditor: View {
     }
 }
 
+/// Which favorite the widget opens.
+struct WidgetPicker: View {
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        let favorites = store.state.favorites.compactMap(ActivityItem.from(key:))
+        let goTo = store.state.goTo.flatMap(ActivityItem.from(key:))
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Tap the widget on your Home Screen or Lock Screen to go straight to this activity.")
+                .font(KFont.body(14)).foregroundStyle(Palette.text2)
+            SettingsGroup {
+                pickRow(key: nil, title: "My go-to", detail: goTo?.title ?? "Choose one in Profile → Favorites")
+                ForEach(favorites) { item in
+                    RowDivider()
+                    pickRow(key: item.id, title: item.title, detail: item.shortLine)
+                }
+            }
+            if favorites.isEmpty {
+                Text("Add favorites with the heart on any activity or story to choose them here.")
+                    .font(KFont.body(14)).foregroundStyle(Palette.text3)
+            }
+        }
+    }
+
+    private func pickRow(key: String?, title: String, detail: String) -> some View {
+        let on = store.state.widgetActivity == key
+        return Button {
+            store.state.widgetActivity = key
+            Haptics.shared.selection()
+        } label: {
+            SettingRow(title: title, detail: detail) {
+                if on { Image(systemName: "checkmark").foregroundStyle(Palette.gold) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
 struct AboutView: View {
     var body: some View {
         ScrollView {
@@ -324,7 +348,7 @@ struct AboutView: View {
 
     private func group(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(KFont.heading(17)).foregroundStyle(Palette.text)
+            Text(title).font(KFont.heading(20)).foregroundStyle(Palette.text)
             Text(text).font(KFont.body(14)).foregroundStyle(Palette.text2)
         }
         .padding(16)

@@ -29,8 +29,8 @@ struct BookDetailView: View {
                     .padding(.top, 8)
                 VStack(alignment: .leading, spacing: 6) {
                     Eyebrow(text: story.collectionName)
-                    Text(story.title).font(KFont.title(30)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
-                    Text("\(story.author) · \(story.origin)").font(KFont.body(15)).foregroundStyle(Palette.text2)
+                    Text(story.title).font(KFont.title(28)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
+                    Text("\(story.author) · \(story.origin)").font(KFont.body(16)).foregroundStyle(Palette.text2)
                 }
                 HStack(spacing: 8) {
                     ActivityTag(text: "\(story.readMinutes) min read", systemImage: "book")
@@ -44,24 +44,25 @@ struct BookDetailView: View {
                         .accessibilityLabel(progress.finished ? "Finished" : "\(Int(progress.fraction * 100)) percent read")
                 }
 
-                VStack(spacing: 10) {
+                HStack(spacing: 10) {
                     Button {
                         router.open(.reader(story.id))
                     } label: {
-                        Label(readTitle(progress), systemImage: "book")
+                        Label(readTitle(progress) == "Continue reading" ? "Continue" : readTitle(progress), systemImage: "book")
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     Button {
                         router.open(.listen(story.id))
                     } label: {
-                        Label(listened > 5 ? "Keep listening" : "Listen", systemImage: "headphones")
+                        Label(listened > 5 ? "Resume" : "Listen", systemImage: "headphones")
                     }
                     .buttonStyle(SecondaryButtonStyle())
                 }
+                .labelStyle(.titleAndIcon)
                 .padding(.top, 6)
 
                 Text("Text from Project Gutenberg (eBook #\(story.gutenbergID)), from \(story.source). Narration by a LibriVox volunteer. Both are in the public domain.")
-                    .font(KFont.body(12, relativeTo: .footnote))
+                    .font(KFont.body(14, relativeTo: .footnote))
                     .foregroundStyle(Palette.text3)
                     .padding(.top, 8)
             }

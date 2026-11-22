@@ -13,6 +13,7 @@ struct KomorebiApp: App {
     init() {
         FontRegistrar.registerBundledFonts()
         Appearance.configure()
+        _ = NarrationPlayer.shared // connects the Live Activity buttons
     }
 
     var body: some Scene {

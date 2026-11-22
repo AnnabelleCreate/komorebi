@@ -1,184 +1,312 @@
 import SwiftUI
 
-/// The reader: scrolls gently, remembers your place, and offers reading comfort settings.
+/// The reader from the Figma prototype: paged, swipe to turn, with read-along.
+/// When the narration plays here, the sentence being read is highlighted and pages turn on their own.
 struct ReaderView: View {
     var story: Story
     @Environment(AppStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(NarrationPlayer.self) private var player
     @Environment(\.dismiss) private var dismiss
     @Environment(\.komorebiReduceMotion) private var reduce
 
-    @State private var position: Int?
-    @State private var showComfort = false
-    @State private var dimLevel: Double = 0
-    @State private var openedAt = Date()
+    @State private var text: StoryText?
+    @State private var pages: [StoryPage] = []
+    @State private var layoutKey = ""
+    @State private var page = 0
     @State private var restored = false
+    @State private var showComfort = false
+    @State private var lastManualTurn = Date.distantPast
+    @State private var dimLevel: Double = 0
+
+    init(story: Story) {
+        self.story = story
+        _text = State(initialValue: StoryText(story: story))
+    }
 
     private var comfort: ReadingComfort { store.state.comfort }
-    private var endIndex: Int { story.blocks.count }
+    /// The final page after the story: "The end." and a line to keep.
+    private var endPage: Int { pages.count }
+    private var isListeningHere: Bool { player.story?.id == story.id && player.problem == nil }
+    private var activeUnit: Int? {
+        guard isListeningHere, let text, player.duration > 0, player.isPlaying || player.elapsed > 1 else { return nil }
+        return text.unit(at: player.elapsed, duration: player.duration)
+    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Color(hex: 0x141726).ignoresSafeArea()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: comfort.pointSize * 0.9) {
-                        header.id(-1)
-                        ForEach(Array(story.blocks.enumerated()), id: \.offset) { index, block in
-                            blockView(block).id(index)
-                        }
-                        ending.id(endIndex)
+        VStack(spacing: 0) {
+            header
+            GeometryReader { geo in
+                let pageSize = CGSize(width: geo.size.width - 32, height: geo.size.height - 16)
+                TabView(selection: $page) {
+                    ForEach(pages.indices, id: \.self) { i in
+                        pageView(pages[i])
+                            .frame(width: pageSize.width, height: pageSize.height, alignment: .topLeading)
+                            .padding(.horizontal, 16)
+                            .tag(i)
                     }
-                    .scrollTargetLayout()
-                    .padding(.horizontal, 24)
-                    .padding(.top, 70)
-                    .padding(.bottom, 60)
+                    theEnd.tag(endPage)
                 }
-                .scrollPosition(id: $position, anchor: .top)
-                .onAppear {
-                    guard !restored else { return }
-                    restored = true
-                    if let saved = store.state.progress[story.id], !saved.finished, saved.blockIndex > 0 {
-                        DispatchQueue.main.async { proxy.scrollTo(saved.blockIndex, anchor: .top) }
-                    }
-                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .onAppear { layout(pageSize) }
+                .onChange(of: pageSize) { _, size in layout(size) }
+                .onChange(of: comfort) { _, _ in layout(pageSize, force: true) }
             }
-            topBar
-            progressBar
+            if isListeningHere && (player.isPlaying || player.elapsed > 1) { miniPlayer }
+            footer
         }
+        .background(Palette.background.ignoresSafeArea())
         .overlay {
             Color(hex: 0xFF9A3C).opacity(comfort.warmth * 0.3).blendMode(.multiply).ignoresSafeArea().allowsHitTesting(false)
         }
-        .overlay {
-            Color.black.opacity(dimLevel).ignoresSafeArea().allowsHitTesting(false)
-        }
+        .overlay { Color.black.opacity(dimLevel).ignoresSafeArea().allowsHitTesting(false) }
         .statusBarHidden(true)
         .sheet(isPresented: $showComfort) {
             ComfortSheet().presentationDetents([.medium, .large]).presentationBackground(Palette.card)
         }
-        .onChange(of: position) { _, newValue in
-            guard let index = newValue, index >= 0 else { return }
-            let clamped = min(index, max(0, story.blocks.count - 1))
-            store.saveProgress(storyID: story.id, blockIndex: index >= endIndex ? story.blocks.count - 1 : clamped, blockCount: story.blocks.count)
+        .onChange(of: page) { old, new in
+            if new != old { SoundEngine.shared.play(.page, volume: 0.5) }
+            saveProgress()
         }
+        .onChange(of: activeUnit) { _, unit in follow(unit) }
         .task(id: comfort.dimSlowly) {
-            // "Dim slowly": lowers the page brightness over ten minutes while you read.
-            openedAt = Date()
             dimLevel = 0
             guard comfort.dimSlowly else { return }
+            let opened = Date()
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
-                let minutes = Date().timeIntervalSince(openedAt) / 60
+                let minutes = Date().timeIntervalSince(opened) / 60
                 withAnimation(.easeInOut(duration: 4)) { dimLevel = min(0.45, minutes / 10 * 0.45) }
             }
         }
         .onAppear {
             store.state.lastStoryID = story.id
-            SoundEngine.shared.play(.page, volume: 0.6)
         }
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Eyebrow(text: story.collectionName)
-            Text(story.title).font(KFont.title(30)).foregroundStyle(Palette.text).accessibilityAddTraits(.isHeader)
-            Text(story.author).font(KFont.body(16)).foregroundStyle(Palette.text2)
+    // MARK: Layout
+
+    private func layout(_ size: CGSize, force: Bool = false) {
+        guard let text else { return }
+        let key = "\(Int(size.width))x\(Int(size.height))-\(comfort.sizeIndex)-\(comfort.serif)"
+        guard force || key != layoutKey else { return }
+        let anchorUnit = pages.indices.contains(page) ? pages[page].firstUnit : nil
+        layoutKey = key
+        pages = StoryPaginator.pages(for: text, size: comfort.pointSize, serif: comfort.serif, pageSize: size)
+        if let anchorUnit {
+            page = pages.firstIndex { $0.contains(unit: anchorUnit) } ?? 0
+        } else if !restored {
+            restored = true
+            if let saved = store.state.progress[story.id], !saved.finished {
+                page = pages.firstIndex { $0.contains(unit: saved.blockIndex) } ?? 0
+            }
+            if let unit = activeUnit { page = pages.firstIndex { $0.contains(unit: unit) } ?? page }
         }
-        .padding(.bottom, 12)
+    }
+
+    private func saveProgress() {
+        guard let text, !pages.isEmpty else { return }
+        let unit = page >= endPage ? max(0, text.units.count - 1) : pages[page].firstUnit
+        store.saveProgress(storyID: story.id, blockIndex: unit, blockCount: text.units.count)
+    }
+
+    /// Turns the page to keep up with the narration, unless the reader just turned it themselves.
+    private func follow(_ unit: Int?) {
+        guard let unit, Date().timeIntervalSince(lastManualTurn) > 8,
+              let target = pages.firstIndex(where: { $0.contains(unit: unit) }), target != page else { return }
+        withAnimation(reduce ? .easeInOut(duration: 0.3) : .easeInOut(duration: 0.5)) { page = target }
+    }
+
+    private func turn(_ delta: Int) {
+        lastManualTurn = Date()
+        let next = max(0, min(endPage, page + delta))
+        withAnimation(reduce ? .easeInOut(duration: 0.25) : .easeInOut(duration: 0.35)) { page = next }
+    }
+
+    // MARK: Page
+
+    private func pageView(_ p: StoryPage) -> some View {
+        VStack(alignment: .leading, spacing: StoryPaginator.paragraphSpacing(comfort.pointSize)) {
+            ForEach(p.slices.indices, id: \.self) { i in
+                sliceView(p.slices[i])
+            }
+        }
+        .simultaneousGesture(DragGesture(minimumDistance: 20).onChanged { _ in lastManualTurn = Date() })
     }
 
     @ViewBuilder
-    private func blockView(_ block: StoryBlock) -> some View {
-        switch block.type {
-        case .heading:
-            Text(block.text ?? "")
-                .font(KFont.heading(CGFloat(comfort.pointSize) + 2))
-                .foregroundStyle(Palette.gold)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .accessibilityAddTraits(.isHeader)
-        case .paragraph:
-            Text(block.text ?? "")
-                .font(KFont.reading(CGFloat(comfort.pointSize), serif: comfort.serif))
-                .foregroundStyle(Palette.text)
-                .lineSpacing(comfort.pointSize * 0.45)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-        case .poem:
-            VStack(alignment: .leading, spacing: comfort.pointSize * 0.8) {
-                if let number = block.text {
-                    Text(number).font(KFont.heading(CGFloat(comfort.pointSize))).foregroundStyle(Palette.gold)
-                        .accessibilityLabel("Song \(number)")
+    private func sliceView(_ slice: StoryPage.Slice) -> some View {
+        if let text {
+            let paragraph = text.paragraphs[slice.paragraph]
+            let active = activeUnit
+            VStack(alignment: .leading, spacing: 4) {
+                if let label = paragraph.label, slice.units.lowerBound == paragraph.units.lowerBound {
+                    Text(label).font(KFont.heading(CGFloat(comfort.pointSize))).foregroundStyle(Palette.gold)
+                        .accessibilityLabel("Song \(label)")
                 }
-                ForEach(Array((block.stanzas ?? []).enumerated()), id: \.offset) { _, stanza in
-                    Text(stanza.joined(separator: "\n"))
+                if paragraph.kind == .heading {
+                    Text(text.units[slice.units.lowerBound].text)
+                        .font(KFont.heading(CGFloat(comfort.pointSize) + 2))
+                        .foregroundStyle(Palette.gold)
+                        .accessibilityAddTraits(.isHeader)
+                } else {
+                    composed(slice, text: text, active: active)
                         .font(KFont.reading(CGFloat(comfort.pointSize), serif: comfort.serif))
-                        .foregroundStyle(Palette.text)
-                        .lineSpacing(comfort.pointSize * 0.45)
+                        .lineSpacing(StoryPaginator.lineSpacing(comfort.pointSize))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // During read-along, tap a paragraph to move the narration there.
+                guard isListeningHere else { return }
+                player.seek(to: text.time(ofUnit: slice.units.lowerBound, duration: player.duration))
+                Haptics.shared.selection()
+            }
         }
     }
 
-    private var ending: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("The end").font(KFont.heading(18)).foregroundStyle(Palette.text2).frame(maxWidth: .infinity).padding(.top, 20)
-            VStack(alignment: .leading, spacing: 12) {
-                Text("A line to keep, if you’d like").font(KFont.medium(14)).foregroundStyle(Palette.gold)
-                Text("“\(story.keepLine)”").font(KFont.reading(19, serif: true)).foregroundStyle(Palette.text)
-                let kept = store.hasKept(line: story.keepLine, from: story.id)
-                Button {
-                    store.keep(line: story.keepLine, from: story.id)
-                    Haptics.shared.success()
-                    SoundEngine.shared.play(.bell, volume: 0.5)
-                } label: {
-                    Label(kept ? "Kept in your Profile" : "Keep this line", systemImage: kept ? "checkmark" : "plus")
+    /// Joins sentences into one Text, highlighting the one being narrated.
+    private func composed(_ slice: StoryPage.Slice, text: StoryText, active: Int?) -> Text {
+        let separator = text.paragraphs[slice.paragraph].kind == .stanza ? "\n" : " "
+        var result = Text("")
+        for (n, i) in slice.units.enumerated() {
+            let color: Color
+            if let active { color = i == active ? Palette.text : Palette.text.opacity(0.45) } else { color = Palette.text }
+            let piece = Text(text.units[i].text).foregroundColor(color)
+            result = n == 0 ? piece : result + Text(separator) + piece
+        }
+        return result
+    }
+
+    private var theEnd: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                Image(systemName: "moon").font(.system(size: 24)).foregroundStyle(Palette.background)
+                    .frame(width: 52, height: 52).background(Circle().fill(Palette.gold)).padding(.top, 24)
+                Text("The end.").font(KFont.heading(24)).foregroundStyle(Palette.text)
+                Text("\(story.title) · \(story.author)").font(KFont.body(14)).foregroundStyle(Palette.text2)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("A LINE TO KEEP").font(KFont.medium(14)).tracking(1).foregroundStyle(Palette.gold)
+                        Spacer()
+                        let kept = store.hasKept(line: story.keepLine, from: story.id)
+                        Button {
+                            store.keep(line: story.keepLine, from: story.id)
+                            Haptics.shared.success()
+                            SoundEngine.shared.play(.bell, volume: 0.5)
+                        } label: {
+                            Image(systemName: kept ? "bookmark.fill" : "bookmark").foregroundStyle(Palette.text).frame(width: 44, height: 44)
+                        }
+                        .disabled(kept)
+                        .accessibilityLabel(kept ? "Kept in your Profile" : "Keep this line")
+                    }
+                    Text("“\(story.keepLine)”").font(KFont.reading(18, serif: true)).foregroundStyle(Palette.text)
                 }
-                .buttonStyle(SecondaryButtonStyle(fullWidth: false))
-                .disabled(kept)
+                .padding(16)
+                .kCard(radius: 16, raised: false)
+                Button("Back to Tonight") { dismiss() }.buttonStyle(PrimaryButtonStyle()).padding(.top, 8)
             }
-            .padding(18)
-            .kCard(radius: 18, raised: false)
-            Button("Close the book") { dismiss() }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.top, 8)
+            .padding(.horizontal, 16)
         }
         .onAppear {
-            store.saveProgress(storyID: story.id, blockIndex: max(0, story.blocks.count - 1), blockCount: story.blocks.count)
+            if let text { store.saveProgress(storyID: story.id, blockIndex: max(0, text.units.count - 1), blockCount: text.units.count) }
         }
     }
 
-    private var topBar: some View {
-        HStack(spacing: 10) {
+    // MARK: Chrome
+
+    private var header: some View {
+        HStack(spacing: 12) {
             CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(story.title).font(KFont.heading(20)).foregroundStyle(Palette.text).lineLimit(1)
+                if let text, !pages.isEmpty {
+                    Text(page >= endPage ? "Finished" : "Page \(page + 1) of \(pages.count) · \(text.minutesLeft(from: pages[page].firstUnit)) min left")
+                        .font(KFont.body(14)).foregroundStyle(Palette.text2)
+                }
+            }
             Spacer()
-            CircleIconButton(systemImage: "headphones", label: "Listen instead") { router.activity = .listen(story.id) }
-            CircleIconButton(systemImage: "textformat.size", label: "Reading comfort") { showComfort = true }
+            CircleIconButton(systemImage: "moon", label: "Reading comfort") { showComfort = true }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .background(LinearGradient(colors: [Color(hex: 0x141726), Color(hex: 0x141726, opacity: 0)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+        .padding(.vertical, 8)
     }
 
-    private var progressBar: some View {
-        let fraction = store.state.progress[story.id]?.fraction ?? 0
-        return VStack {
+    private var miniPlayer: some View {
+        HStack {
+            Text(story.title).font(KFont.medium(16)).foregroundStyle(Palette.text)
             Spacer()
+            Text("\(max(0, player.duration - player.elapsed).playbackTime) left").font(KFont.body(14)).foregroundStyle(Palette.text2).monospacedDigit()
+            Button { player.toggle() } label: {
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 15)).foregroundStyle(Palette.background)
+                    .frame(width: 40, height: 40).background(Circle().fill(Palette.gold))
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+        }
+        .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 4)
+        .background(Capsule().fill(Palette.card))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .contentShape(Rectangle())
+        .onTapGesture { router.activity = .listen(story.id) }
+        .gesture(DragGesture(minimumDistance: 20).onEnded { v in
+            if v.translation.height < -30 { router.activity = .listen(story.id) }
+        })
+        .accessibilityAction(named: "Open player") { router.activity = .listen(story.id) }
+        .transition(.opacity)
+    }
+
+    private var footer: some View {
+        let bookmarked = store.state.bookmarks[story.id].map { b in pages.indices.contains(page) && pages[page].contains(unit: b) } ?? false
+        return VStack(spacing: 10) {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Palette.outline)
-                    Capsule().fill(Palette.gold).frame(width: geo.size.width * fraction)
+                    Capsule().fill(Palette.gold).frame(width: geo.size.width * (pages.isEmpty ? 0 : Double(min(page + 1, pages.count)) / Double(pages.count)))
                 }
             }
             .frame(height: 3)
-            .padding(.horizontal, 24)
-            .padding(.bottom, 10)
-            .accessibilityElement()
-            .accessibilityLabel("\(Int(fraction * 100)) percent read")
+            .accessibilityHidden(true)
+            HStack(spacing: 12) {
+                CircleIconButton(systemImage: "arrow.left", label: "Previous page") { turn(-1) }
+                    .disabled(page == 0)
+                Spacer()
+                CircleIconButton(systemImage: isListeningHere && player.isPlaying ? "pause" : "headphones",
+                                 label: isListeningHere && player.isPlaying ? "Pause narration" : "Read along with narration") { toggleReadAlong() }
+                CircleIconButton(systemImage: bookmarked ? "bookmark.fill" : "bookmark", label: bookmarked ? "Remove bookmark" : "Bookmark this page") {
+                    guard pages.indices.contains(page) else { return }
+                    if bookmarked { store.state.bookmarks[story.id] = nil } else { store.state.bookmarks[story.id] = pages[page].firstUnit }
+                    Haptics.shared.selection()
+                }
+                Spacer()
+                CircleIconButton(systemImage: "arrow.right", label: "Next page") { turn(1) }
+                    .disabled(page >= endPage)
+            }
         }
-        .allowsHitTesting(false)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    private func toggleReadAlong() {
+        if isListeningHere && player.isPlaying {
+            player.pause()
+            return
+        }
+        player.load(story)
+        guard player.problem == nil, let text else { return }
+        // Start the narration from the top of this page, unless it's already partway through this page.
+        if pages.indices.contains(page) {
+            let current = player.duration > 0 ? text.unit(at: player.elapsed, duration: player.duration) : -1
+            if !pages[page].contains(unit: current) {
+                player.seek(to: text.time(ofUnit: pages[page].firstUnit, duration: player.duration > 0 ? player.duration : story.audioSeconds))
+            }
+        }
+        lastManualTurn = .distantPast
+        player.play()
     }
 }
 
@@ -191,9 +319,9 @@ struct ComfortSheet: View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Text("Reading comfort").font(KFont.title(22)).foregroundStyle(Palette.text)
+                Text("Reading comfort").font(KFont.heading(24)).foregroundStyle(Palette.text)
                 Spacer()
-                Button("Done") { dismiss() }.buttonStyle(GhostButtonStyle())
+                CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
             }
             VStack(spacing: 0) {
                 SettingRow(title: "Text size", detail: ReadingComfort.sizeNames[store.state.comfort.sizeIndex]) {
@@ -224,16 +352,14 @@ struct ComfortSheet: View {
                 }
                 .padding(16)
                 RowDivider()
-                SettingRow(title: "Dim slowly", detail: "Lowers the page brightness over ten minutes") {
-                    Toggle("", isOn: $store.state.comfort.dimSlowly).labelsHidden().tint(Palette.gold)
+                SettingRow(title: "Dim slowly as I read", detail: "The screen fades a little with each page") {
+                    Toggle("", isOn: $store.state.comfort.dimSlowly).labelsHidden().tint(Palette.gold).accessibilityLabel("Dim slowly as I read")
                 }
             }
-            .kCard(radius: 14)
-            Text("“Only let me make my life simple and straight.”")
-                .font(KFont.reading(CGFloat(store.state.comfort.pointSize), serif: store.state.comfort.serif))
-                .foregroundStyle(Palette.text2)
+            .kCard(radius: 16)
+            Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle())
             Spacer()
         }
-        .padding(20)
+        .padding(16)
     }
 }

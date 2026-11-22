@@ -17,7 +17,9 @@ final class AppStore {
                 PromptScheduler.shared.apply(evening: state.evening, night: state.night)
             }
             if state.evening != oldValue.evening || state.night != oldValue.night
-                || state.lastStoryID != oldValue.lastStoryID || state.progress != oldValue.progress {
+                || state.lastStoryID != oldValue.lastStoryID || state.progress != oldValue.progress
+                || state.goTo != oldValue.goTo || state.widgetActivity != oldValue.widgetActivity
+                || state.favorites != oldValue.favorites || state.lastListenedID != oldValue.lastListenedID {
                 publishWidgetSnapshot()
             }
         }
@@ -94,21 +96,33 @@ final class AppStore {
     }
 
     func publishWidgetSnapshot() {
-        let story = StoryLibrary.shared.story(state.lastStoryID)
+        let story = StoryLibrary.shared.story(state.lastListenedID ?? state.lastStoryID)
+        let activity = ActivityItem.from(key: state.widgetKey) ?? ActivityItem(kind: .garden)
+        var minutesLeft = 0
+        if let story {
+            let listened = state.audioPositions[story.id] ?? 0
+            if listened > 5 { minutesLeft = max(1, Int((story.audioSeconds - listened) / 60)) }
+            else { minutesLeft = max(1, Int(Double(story.readMinutes) * (1 - (state.progress[story.id]?.fraction ?? 0)))) }
+        }
         let snapshot = WidgetSnapshot(
             storyID: story?.id,
             storyTitle: story?.title,
             storyAuthor: story?.author,
             storyProgress: story.flatMap { state.progress[$0.id]?.fraction } ?? 0,
             eveningOn: state.evening.isOn,
-            eveningAsWidget: state.evening.style == .widget,
+            eveningAsWidget: true,
             eveningMinutes: state.evening.startMinutes,
             eveningWeekdays: state.evening.activeWeekdays,
             nightOn: state.night.isOn,
             nightAsWidget: state.night.style == .widget,
             nightStartMinutes: state.night.startMinutes,
             nightEndMinutes: state.night.endMinutes,
-            nightWeekdays: state.night.activeWeekdays
+            nightWeekdays: state.night.activeWeekdays,
+            eveningEndMinutes: state.evening.endMinutes,
+            activityKey: activity.id,
+            activityTitle: activity.title,
+            activityDetail: activity.shortLine,
+            storyMinutesLeft: minutesLeft
         )
         if snapshot != WidgetSnapshot.load() {
             snapshot.save()
@@ -129,7 +143,14 @@ final class AppStore {
     func isFavorite(_ key: String) -> Bool { state.favorites.contains(key) }
 
     func toggleFavorite(_ key: String) {
-        if let i = state.favorites.firstIndex(of: key) { state.favorites.remove(at: i) } else { state.favorites.append(key) }
+        if let i = state.favorites.firstIndex(of: key) {
+            state.favorites.remove(at: i)
+            if state.goTo == key { state.goTo = state.favorites.first }
+            if state.widgetActivity == key { state.widgetActivity = nil }
+        } else {
+            state.favorites.append(key)
+            if state.goTo == nil { state.goTo = key }
+        }
     }
 
     func saveProgress(storyID: String, blockIndex: Int, blockCount: Int) {
