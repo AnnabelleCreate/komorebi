@@ -234,7 +234,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/Komorebi.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8Z3UFA64JV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Komorebi-Info.plist";
@@ -267,7 +267,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/KomorebiWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8Z3UFA64JV;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KomorebiWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Komorebi;
@@ -294,7 +294,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/KomorebiWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8Z3UFA64JV;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KomorebiWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Komorebi;
@@ -321,7 +321,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/Komorebi.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8Z3UFA64JV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Komorebi-Info.plist";
