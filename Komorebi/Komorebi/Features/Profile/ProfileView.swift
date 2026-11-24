@@ -30,7 +30,7 @@ struct ProfileView: View {
                     }
                     .accessibilityLabel("Settings")
                 }
-                .padding(.top, 8)
+                .padding(.top, 16)
 
                 Text(store.state.name.isEmpty ? "Welcome" : "Welcome \(store.state.name)")
                     .font(KFont.title(32, relativeTo: .largeTitle))

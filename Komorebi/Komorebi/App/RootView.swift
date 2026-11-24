@@ -94,18 +94,20 @@ struct MainTabView: View {
 
     var body: some View {
         @Bindable var router = router
-        TabView(selection: $router.tab) {
-            NavigationStack { TonightView() }
-                .toolbar(.hidden, for: .tabBar)
-                .tag(AppTab.tonight)
-            KitsTab()
-                .toolbar(.hidden, for: .tabBar)
-                .tag(AppTab.kits)
-            NavigationStack { ProfileView() }
-                .toolbar(.hidden, for: .tabBar)
-                .tag(AppTab.profile)
+        VStack(spacing: 0) {
+            TabView(selection: $router.tab) {
+                NavigationStack { TonightView() }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.tonight)
+                KitsTab()
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.kits)
+                NavigationStack { ProfileView() }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(AppTab.profile)
+            }
+            KomorebiTabBar(selection: $router.tab)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { KomorebiTabBar(selection: $router.tab) }
         .onChange(of: router.tab) { _, _ in Haptics.shared.selection() }
     }
 }
@@ -127,17 +129,17 @@ struct KomorebiTabBar: View {
                 Button {
                     selection = item.0
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Image(systemName: item.2)
                             .font(.system(size: 17, weight: .regular))
                             .foregroundStyle(on ? Palette.background : Palette.text2)
-                            .frame(width: 56, height: 30)
+                            .frame(width: 52, height: 26)
                             .background(Capsule().fill(on ? Palette.gold : .clear))
                         Text(item.1)
-                            .font(on ? KFont.medium(14, relativeTo: .caption) : KFont.body(14, relativeTo: .caption))
+                            .font(on ? KFont.medium(13, relativeTo: .caption) : KFont.body(13, relativeTo: .caption))
                             .foregroundStyle(on ? Palette.text : Palette.text2)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -146,8 +148,8 @@ struct KomorebiTabBar: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 2)
+        .padding(.top, 6)
+        .padding(.bottom, 0)
         .background(Palette.card.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) { Rectangle().fill(Palette.outline).frame(height: 1) }
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)

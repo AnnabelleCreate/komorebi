@@ -45,6 +45,8 @@ struct PrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(KFont.medium(16))
             .foregroundStyle(Palette.background)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             .padding(.horizontal, 24)
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 52)
             .background(Capsule().fill(Palette.gold))
@@ -62,7 +64,9 @@ struct SecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(KFont.medium(16))
             .foregroundStyle(Palette.text)
-            .padding(.horizontal, 22)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 16)
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 52)
             .background(Capsule().strokeBorder(Palette.text.opacity(0.9), lineWidth: 1.5))
             .opacity(isEnabled ? 1 : 0.4)
@@ -273,9 +277,11 @@ struct RowDivider: View {
 struct ArtImage: View {
     var name: String
     var body: some View {
-        Image(name)
-            .resizable()
-            .scaledToFill()
+        // Color.clear takes exactly the size it's offered; the image fills it and is clipped.
+        // A bare scaledToFill image reports its full width and pushed whole screens past the edges.
+        Color.clear
+            .overlay { Image(name).resizable().scaledToFill() }
+            .clipped()
             .accessibilityHidden(true)
     }
 }

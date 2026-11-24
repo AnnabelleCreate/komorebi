@@ -87,7 +87,7 @@ struct TonightView: View {
                         store.state.settings.ambience = !soundOn
                     }
                 }
-                .padding(.top, 4)
+                .padding(.top, 16)
 
                 ScreenTitle(title: greeting, subtitle: store.state.name.isEmpty ? "Here’s something for tonight." : "Here’s something for tonight, \(store.state.name).")
 

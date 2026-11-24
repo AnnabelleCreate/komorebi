@@ -37,6 +37,27 @@ struct KitsTab: View {
     }
 }
 
+/// Pins a checkout step's main button above the tab bar, so it never has to be scrolled to.
+struct CheckoutActionBar<Action: View>: ViewModifier {
+    @ViewBuilder var action: () -> Action
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 6) { action() }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+                .background(Palette.background)
+        }
+    }
+}
+
+extension View {
+    func checkoutAction<A: View>(@ViewBuilder _ action: @escaping () -> A) -> some View {
+        modifier(CheckoutActionBar(action: action))
+    }
+}
+
 struct KitContents: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -65,7 +86,7 @@ struct KitsHome: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                ScreenTitle(title: "Kits", subtitle: "Things you can hold. Fewer screens, more evening.").padding(.top, 12)
+                ScreenTitle(title: "Kits", subtitle: "Things you can hold. Fewer screens, more evening.").padding(.top, 24)
                 Button { path.append(.detail) } label: {
                     VStack(alignment: .leading, spacing: 0) {
                         ArtImage(name: "art-kit").frame(height: 150).frame(maxWidth: .infinity).clipped()
@@ -122,11 +143,12 @@ struct KitDetailView: View {
                     Text("\(CheckoutModel.priceCents.dollars) · shipping and tax included").font(KFont.medium(16)).foregroundStyle(Palette.text)
                     Text("Same price once or monthly. No discounts to chase, no add-ons.").font(KFont.body(14)).foregroundStyle(Palette.text2)
                 }
-                Button("Get this kit") { startCheckout() }.buttonStyle(PrimaryButtonStyle())
             }
             .padding(.horizontal, 16)
+            .padding(.top, 8)
             .padding(.bottom, 24)
         }
+        .checkoutAction { Button("Get this kit") { startCheckout() }.buttonStyle(PrimaryButtonStyle()) }
         .kScreen()
         .navigationTitle("Kit of the month")
         .navigationBarTitleDisplayMode(.inline)
@@ -137,14 +159,15 @@ struct HowOftenView: View {
     @Bindable var model: CheckoutModel
     @Binding var path: [KitStep]
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ScreenTitle(title: "How often?", subtitle: "Same price either way. No discounts to chase.")
-            option(.once, "Just this once", "One box. Nothing recurring.")
-            option(.monthly, "Every month", "A new box each month. We’ll remind you 3 days before it ships. Skip or cancel anytime.")
-            Spacer()
-            Button("Continue") { path.append(.bag) }.buttonStyle(PrimaryButtonStyle())
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ScreenTitle(title: "How often?", subtitle: "Same price either way. No discounts to chase.")
+                option(.once, "Just this once", "One box. Nothing recurring.")
+                option(.monthly, "Every month", "A new box each month. We’ll remind you 3 days before it ships. Skip or cancel anytime.")
+            }
+            .padding(16)
         }
-        .padding(16)
+        .checkoutAction { Button("Continue") { path.append(.bag) }.buttonStyle(PrimaryButtonStyle()) }
         .kScreen()
         .navigationTitle("How often")
         .navigationBarTitleDisplayMode(.inline)
@@ -178,29 +201,30 @@ struct BagView: View {
     @Bindable var model: CheckoutModel
     @Binding var path: [KitStep]
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 14) {
-                ArtImage(name: "art-kit").frame(width: 90, height: 70).clipShape(RoundedRectangle(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Quiet hands, slow evening").font(KFont.heading(20)).foregroundStyle(Palette.text)
-                    Text(model.plan == .monthly ? "Every month" : "Just this once").font(KFont.body(14)).foregroundStyle(Palette.text2)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 14) {
+                    ArtImage(name: "art-kit").frame(width: 90, height: 70).clipShape(RoundedRectangle(cornerRadius: 10))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Quiet hands, slow evening").font(KFont.heading(20)).foregroundStyle(Palette.text)
+                        Text(model.plan == .monthly ? "Every month" : "Just this once").font(KFont.body(14)).foregroundStyle(Palette.text2)
+                    }
                 }
-            }
-            .padding(14)
-            .kCard()
-            VStack(spacing: 8) {
-                line("Kit", CheckoutModel.priceCents.dollars)
-                line("Shipping", "Included")
-                line("Tax", "Included")
-                Rectangle().fill(Palette.outline).frame(height: 1)
-                line("Total today", CheckoutModel.priceCents.dollars, bold: true)
+                .padding(14)
+                .kCard()
+                VStack(spacing: 8) {
+                    line("Kit", CheckoutModel.priceCents.dollars)
+                    line("Shipping", "Included")
+                    line("Tax", "Included")
+                    Rectangle().fill(Palette.outline).frame(height: 1)
+                    line("Total today", CheckoutModel.priceCents.dollars, bold: true)
+                }
+                .padding(16)
+                .kCard()
             }
             .padding(16)
-            .kCard()
-            Spacer()
-            Button("Continue to shipping") { path.append(.shipping) }.buttonStyle(PrimaryButtonStyle())
         }
-        .padding(16)
+        .checkoutAction { Button("Continue to shipping") { path.append(.shipping) }.buttonStyle(PrimaryButtonStyle()) }
         .kScreen()
         .navigationTitle("Your bag")
         .navigationBarTitleDisplayMode(.inline)
@@ -267,18 +291,19 @@ struct ShippingView: View {
                 Toggle(isOn: $model.saveAddress) { Text("Remember this address on this phone").font(KFont.body(16)).foregroundStyle(Palette.text) }
                     .tint(Palette.gold)
                 Text("Ships within the US. Arrives in 3–7 days.").font(KFont.body(14)).foregroundStyle(Palette.text3)
-                Button("Continue to payment") {
-                    if model.validateAddress() {
-                        path.append(.payment)
-                    } else {
-                        Haptics.shared.warning()
-                        UIAccessibility.post(notification: .announcement, argument: "Some details need a look. " + model.addressErrors.values.sorted().joined(separator: " "))
-                    }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.top, 6)
             }
             .padding(16)
+        }
+        .checkoutAction {
+            Button("Continue to payment") {
+                if model.validateAddress() {
+                    path.append(.payment)
+                } else {
+                    Haptics.shared.warning()
+                    UIAccessibility.post(notification: .announcement, argument: "Some details need a look. " + model.addressErrors.values.sorted().joined(separator: " "))
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
         }
         .scrollDismissesKeyboard(.interactively)
         .kScreen()
@@ -312,18 +337,19 @@ struct PaymentView: View {
                         .frame(width: 140)
                 }
                 CheckoutField(label: "Name on card", text: $model.cardName, error: model.cardErrors["cardName"], content: .name)
-                Button("Review order") {
-                    if model.validateCard() {
-                        path.append(.review)
-                    } else {
-                        Haptics.shared.warning()
-                        UIAccessibility.post(notification: .announcement, argument: "Some card details need a look. " + model.cardErrors.values.sorted().joined(separator: " "))
-                    }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.top, 6)
             }
             .padding(16)
+        }
+        .checkoutAction {
+            Button("Review order") {
+                if model.validateCard() {
+                    path.append(.review)
+                } else {
+                    Haptics.shared.warning()
+                    UIAccessibility.post(notification: .announcement, argument: "Some card details need a look. " + model.cardErrors.values.sorted().joined(separator: " "))
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
         }
         .scrollDismissesKeyboard(.interactively)
         .kScreen()
@@ -353,29 +379,30 @@ struct ReviewView: View {
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 12).fill(Palette.warm.opacity(0.12)))
                 }
-                Button {
-                    model.pay { order in
-                        guard let order else { Haptics.shared.warning(); return }
-                        store.state.orders.insert(order, at: 0)
-                        if model.saveAddress { store.state.savedAddress = model.address }
-                        PromptScheduler.shared.scheduleKitReminders(for: store.state.orders)
-                        Haptics.shared.success()
-                        SoundEngine.shared.play(.chime, volume: 0.7)
-                        path = [.confirmed(order.id)]
-                    }
-                } label: {
-                    if model.isPaying {
-                        HStack(spacing: 10) { ProgressView().tint(Palette.background); Text("Confirming…") }
-                    } else {
-                        Text("Place order · \(CheckoutModel.priceCents.dollars)")
-                    }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.isPaying)
-                .padding(.top, 6)
-                Text("Beta prototype: test mode, no real payment is taken.").font(KFont.body(14)).foregroundStyle(Palette.text3).frame(maxWidth: .infinity)
             }
             .padding(16)
+        }
+        .checkoutAction {
+            Button {
+                model.pay { order in
+                    guard let order else { Haptics.shared.warning(); return }
+                    store.state.orders.insert(order, at: 0)
+                    if model.saveAddress { store.state.savedAddress = model.address }
+                    PromptScheduler.shared.scheduleKitReminders(for: store.state.orders)
+                    Haptics.shared.success()
+                    SoundEngine.shared.play(.chime, volume: 0.7)
+                    path = [.confirmed(order.id)]
+                }
+            } label: {
+                if model.isPaying {
+                    HStack(spacing: 10) { ProgressView().tint(Palette.background); Text("Confirming…") }
+                } else {
+                    Text("Place order · \(CheckoutModel.priceCents.dollars)")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(model.isPaying)
+            Text("Beta prototype: test mode, no real payment is taken.").font(KFont.body(14)).foregroundStyle(Palette.text3).frame(maxWidth: .infinity)
         }
         .kScreen()
         .navigationTitle("Checkout")
