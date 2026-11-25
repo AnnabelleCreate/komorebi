@@ -118,6 +118,11 @@ An **iPhone** on **iOS 17 or later**, in portrait. It's designed at the iPhone 1
 
 | Date | Change | Why |
 | --- | --- | --- |
+| Nov 24 | Opening the app shows the Figma splash, which fades after about 1.2 seconds to reveal Tonight. | Match the prototype's first screen without making people wait. |
+| Nov 24 | One full-screen loading layer (dark indigo with a gold ginkgo leaf circling at a steady pace) covers any wait longer than a moment: launch, opening a book, the sand garden, the narration. If the app ever freezes for more than a second, the layer covers the screen while it catches up. | Error states: people should always see that something is happening. It meets WCAG: no flashing, slow linear motion, still with Reduce Motion, high-contrast text, announced to VoiceOver. |
+| Nov 24 | Book pages are laid out off the main thread. | Opening a long story or changing text size no longer risks freezing the screen. |
+| Nov 24 | Richer sand speckle in the sand garden; removed the shuffle-path button. | A more tactile sand texture; tracing paths still advance on their own. |
+| Nov 24 | 16 pt padding inside every widget and the Live Activity. | Text, images and buttons sat too close to the widget edges. |
 | Nov 21 | Bundled Urbanist, Prompt and Literata and matched the Figma type scale. | The beta was falling back to system fonts; our design system uses Urbanist and Prompt. |
 | Nov 21 | Removed the Discover tab; rituals and the story shelf now live on Tonight. Added a three-tab bar with the gold pill from Figma. | Only a few activities; one home is simpler. |
 | Nov 21 | Favorites can be set as your **go-to**: it sits at the top of Tonight, and you can choose which favorite the widget opens. | Get to the activity you rely on in one tap. |

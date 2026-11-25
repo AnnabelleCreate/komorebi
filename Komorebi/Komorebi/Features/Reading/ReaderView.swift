@@ -79,6 +79,7 @@ struct ReaderView: View {
                 withAnimation(.easeInOut(duration: 4)) { dimLevel = min(0.45, minutes / 10 * 0.45) }
             }
         }
+        .onDisappear { LoadingCenter.shared.end("reader-\(story.id)") }
         .onAppear {
             store.state.lastStoryID = story.id
         }
@@ -86,21 +87,33 @@ struct ReaderView: View {
 
     // MARK: Layout
 
+    /// Lays out the pages off the main thread, so opening a long story or changing the text size never freezes the screen.
+    /// If it takes more than a moment, the loading layer covers the reader.
     private func layout(_ size: CGSize, force: Bool = false) {
         guard let text else { return }
         let key = "\(Int(size.width))x\(Int(size.height))-\(comfort.sizeIndex)-\(comfort.serif)"
         guard force || key != layoutKey else { return }
         let anchorUnit = pages.indices.contains(page) ? pages[page].firstUnit : nil
         layoutKey = key
-        pages = StoryPaginator.pages(for: text, size: comfort.pointSize, serif: comfort.serif, pageSize: size)
-        if let anchorUnit {
-            page = pages.firstIndex { $0.contains(unit: anchorUnit) } ?? 0
-        } else if !restored {
-            restored = true
-            if let saved = store.state.progress[story.id], !saved.finished {
-                page = pages.firstIndex { $0.contains(unit: saved.blockIndex) } ?? 0
+        let pointSize = comfort.pointSize, serif = comfort.serif
+        let loadingID = "reader-\(story.id)"
+        LoadingCenter.shared.begin(loadingID, "Opening the book…")
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                StoryPaginator.pages(for: text, size: pointSize, serif: serif, pageSize: size)
+            }.value
+            LoadingCenter.shared.end(loadingID)
+            guard layoutKey == key else { return }
+            pages = result
+            if let anchorUnit {
+                page = pages.firstIndex { $0.contains(unit: anchorUnit) } ?? 0
+            } else if !restored {
+                restored = true
+                if let saved = store.state.progress[story.id], !saved.finished {
+                    page = pages.firstIndex { $0.contains(unit: saved.blockIndex) } ?? 0
+                }
+                if let unit = activeUnit { page = pages.firstIndex { $0.contains(unit: unit) } ?? page }
             }
-            if let unit = activeUnit { page = pages.firstIndex { $0.contains(unit: unit) } ?? page }
         }
     }
 

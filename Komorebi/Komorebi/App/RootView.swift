@@ -5,6 +5,7 @@ struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @State private var ready = false
+    @State private var splashDone = false
 
     var body: some View {
         @Bindable var router = router
@@ -12,18 +13,34 @@ struct RootView: View {
 
         ZStack {
             Palette.background.ignoresSafeArea()
-            if !ready {
-                LoadingView(message: "Settling in…", style: .fullScreen).transition(.opacity)
-            } else if store.state.onboarded {
-                MainTabView().transition(.opacity)
-            } else {
-                OnboardingView().transition(.opacity)
+            if ready {
+                if store.state.onboarded {
+                    MainTabView().transition(.opacity)
+                } else {
+                    OnboardingView().transition(.opacity)
+                }
+            }
+            if !(ready && splashDone) {
+                // The Figma splash. It fades away after about 1.2 seconds to reveal Tonight.
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
+                if splashDone && !ready {
+                    // Still getting ready after the splash: cover it with the loading layer.
+                    LoadingView(message: "Settling in…", delay: 0).zIndex(2)
+                }
             }
         }
+        .loadingHost()
         .overlay { WarmScreenTint(amount: store.state.settings.warmScreen) }
         .overlay(alignment: .top) { StatusBanner() }
         .animation(Motion.ease(reduce), value: store.state.onboarded)
-        .animation(Motion.ease(reduce), value: ready)
+        .animation(.easeInOut(duration: 0.6), value: ready && splashDone)
+        .task {
+            FreezeWatchdog.shared.start()
+            try? await Task.sleep(for: .seconds(1.2))
+            splashDone = true
+        }
         .task {
             // Stories and sounds load off the main thread so the first frame never freezes.
             await Task.detached(priority: .userInitiated) {
@@ -36,6 +53,7 @@ struct RootView: View {
         .modifier(AppTextSize(choice: store.state.textSize))
         .fullScreenCover(item: $router.activity) { route in
             ActivityHost(route: route)
+                .loadingHost()
                 .environment(store)
                 .environment(router)
                 .environment(NarrationPlayer.shared)

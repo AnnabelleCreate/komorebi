@@ -38,11 +38,7 @@ struct ListenView: View {
                         if let problem = player.problem, player.story?.id == story.id {
                             problemCard(problem)
                         } else if !player.isReady {
-                            LoadingView(message: "Getting the narrator ready…", style: .inline, delay: 0.3, slowAfter: 6,
-                                        slowMessage: "The narration is taking longer than usual to open.",
-                                        slowActionTitle: "Read the story instead",
-                                        slowAction: { router.activity = .reader(story.id) })
-                                .frame(maxWidth: .infinity, minHeight: 220)
+                            Color.clear.frame(height: 220)
                         } else {
                             scrubber
                             transport
@@ -63,6 +59,13 @@ struct ListenView: View {
             .offset(y: dragOffset)
             .gesture(dismissDrag)
 
+            if !player.isReady && player.problem == nil {
+                LoadingView(message: "Getting the narrator ready…", style: .fullScreen, delay: 0.3, slowAfter: 6,
+                            slowMessage: "The narration is taking longer than usual to open.",
+                            slowActionTitle: "Read the story instead",
+                            slowAction: { router.activity = .reader(story.id) })
+                    .transition(.opacity)
+            }
             if player.askStillAwake { stillAwake.transition(.opacity) }
             if screenOff { screenOffCover.transition(.opacity) }
         }

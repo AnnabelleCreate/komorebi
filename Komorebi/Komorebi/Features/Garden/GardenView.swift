@@ -59,7 +59,7 @@ struct GardenView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Palette.background.opacity(0.6).ignoresSafeArea())
                 } else if garden.isLoading && garden.layer != .intro {
-                    LoadingView(message: "Smoothing the sand…", style: .inline, delay: 0.25,
+                    LoadingView(message: "Smoothing the sand…", style: .fullScreen, delay: 0.25,
                                 slowActionTitle: "Leave the garden", slowAction: { dismiss() })
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .allowsHitTesting(true)
@@ -274,7 +274,6 @@ struct GardenView: View {
                                          argument: store.state.settings.oneTapRaking ? "One-tap raking on. Buttons to rake lines and rings are at the bottom." : "One-tap raking off.")
                 }
                 roundButton("scribble.variable", "Trace a path", on: garden.pathMode) { garden.togglePath() }
-                if garden.pathMode { roundButton("shuffle", "Another path") { garden.nextPath() } }
                 roundButton(garden.soundOn ? "speaker.wave.2" : "speaker.slash", garden.soundOn ? "Mute sound" : "Turn sound on") {
                     garden.soundOn.toggle()
                     if !garden.soundOn { SoundEngine.shared.setLoop(.sand, level: 0) }

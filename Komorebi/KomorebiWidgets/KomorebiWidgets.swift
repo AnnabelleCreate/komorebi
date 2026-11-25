@@ -136,10 +136,13 @@ struct GoToWidgetView: View {
                     Text(copy.subtitle).font(WFont.body(12)).lineLimit(1).opacity(0.8)
                 }
             }
+            .padding(.horizontal, 2)
             .frame(maxWidth: .infinity, alignment: .leading)
         case .systemMedium:
-            HStack(spacing: 0) {
-                art.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+            HStack(spacing: 16) {
+                art
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 6) {
                     if evening {
                         Text("TONIGHT").font(WFont.medium(11)).tracking(1.2).foregroundStyle(Palette.gold)
@@ -153,9 +156,10 @@ struct GoToWidgetView: View {
                         .frame(maxWidth: .infinity, minHeight: 36)
                         .background(Capsule().fill(Palette.gold))
                 }
-                .padding(14)
+                .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+            .padding(16)
         default:
             ZStack(alignment: .bottomLeading) {
                 art
@@ -164,7 +168,7 @@ struct GoToWidgetView: View {
                     if evening { Text("TONIGHT").font(WFont.medium(10)).tracking(1.2).foregroundStyle(Palette.gold) }
                     Text(copy.label).font(WFont.medium(14)).foregroundStyle(Palette.text).lineLimit(2)
                 }
-                .padding(12)
+                .padding(16)
             }
         }
     }
@@ -191,6 +195,7 @@ struct ReadingWidget: Widget {
         .configurationDisplayName("Your story")
         .description("Pick up the story you’re reading or listening to, right where you left off.")
         .supportedFamilies([.systemSmall, .accessoryRectangular, .accessoryCircular])
+        .contentMarginsDisabled()
     }
 }
 
@@ -255,7 +260,8 @@ struct ReadingWidgetView: View {
                     Text("Tonight’s story is waiting").font(WFont.body(11)).foregroundStyle(Palette.text2)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
     }
 }
@@ -272,13 +278,15 @@ struct ListeningLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("komorebi").font(WFont.medium(13)).foregroundStyle(Palette.gold).padding(.leading, 4)
+                    Text("komorebi").font(WFont.medium(13)).foregroundStyle(Palette.gold).padding(.leading, 8)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Button(intent: ListeningActionIntent(action: "toggle")) {
                         Image(systemName: context.state.isPlaying ? "pause.fill" : "play.fill").foregroundStyle(Palette.text)
+                            .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
+                    .padding(.trailing, 8)
                 }
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.attributes.title).font(WFont.title(16)).lineLimit(1)
@@ -294,6 +302,8 @@ struct ListeningLiveActivity: Widget {
                             .font(WFont.body(12)).foregroundStyle(Palette.gold)
                         }
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
                 }
             } compactLeading: {
                 Image(systemName: "headphones").foregroundStyle(Palette.gold)
@@ -388,7 +398,8 @@ struct ListeningLockScreenView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
     }
 }
 

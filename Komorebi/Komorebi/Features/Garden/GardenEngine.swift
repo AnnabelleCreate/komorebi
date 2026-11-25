@@ -249,15 +249,32 @@ final class GardenEngine {
         if let data = ctx.data {
             let px = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
             var rng = SeededRandom(seed: 7)
-            let count = w * h / 20
-            func speck(_ r: Double, _ g: Double, _ b: Double, _ a: Double) {
-                let i = Int(rng.next() * CGFloat(w * h - 1)) * 4
+            let area = w * h
+            func blend(_ i: Int, _ r: Double, _ g: Double, _ b: Double, _ a: Double) {
                 px[i] = UInt8(min(255, Double(px[i]) * (1 - a) + r * a))
                 px[i + 1] = UInt8(min(255, Double(px[i + 1]) * (1 - a) + g * a))
                 px[i + 2] = UInt8(min(255, Double(px[i + 2]) * (1 - a) + b * a))
             }
-            for _ in 0..<count { speck(p.grain.r, p.grain.g, p.grain.b, Double(rng.next()) * p.grainAlpha * 1.6) }
-            for _ in 0..<(count / 3) { speck(0, 0, 0, Double(rng.next()) * p.grainAlpha * 1.6) }
+            /// One grain of sand: a single pixel, or a small soft cluster for the coarser grains.
+            func speck(_ r: Double, _ g: Double, _ b: Double, _ a: Double, size: Int = 1) {
+                let x = Int(rng.next() * CGFloat(w - size)), y = Int(rng.next() * CGFloat(h - size))
+                for dy in 0..<size {
+                    for dx in 0..<size {
+                        let edge = (size > 1 && (dx == 0 || dy == 0 || dx == size - 1 || dy == size - 1)) ? 0.55 : 1
+                        blend(((y + dy) * w + (x + dx)) * 4, r, g, b, a * edge)
+                    }
+                }
+            }
+            let ga = p.grainAlpha
+            let gold = (r: 246.0, g: 206.0, b: 135.0)
+            // Fine grain: dense light and dark specks give the sand its tooth.
+            for _ in 0..<(area / 6) { speck(p.grain.r, p.grain.g, p.grain.b, Double(rng.next()) * ga * 2.4) }
+            for _ in 0..<(area / 9) { speck(0, 0, 0, Double(rng.next()) * ga * 2.2) }
+            // Coarser grains catch the light, a few of them warm like the gold in the design system.
+            for _ in 0..<(area / 700) { speck(p.grain.r, p.grain.g, p.grain.b, 0.12 + Double(rng.next()) * 0.16, size: 2) }
+            for _ in 0..<(area / 900) { speck(0, 0, 0, 0.14 + Double(rng.next()) * 0.16, size: 2) }
+            for _ in 0..<(area / 2600) { speck(gold.r, gold.g, gold.b, 0.18 + Double(rng.next()) * 0.18, size: 2) }
+            for _ in 0..<(area / 9000) { speck(p.grain.r, p.grain.g, p.grain.b, 0.16 + Double(rng.next()) * 0.12, size: 3) }
         }
         return ctx.makeImage()
     }
