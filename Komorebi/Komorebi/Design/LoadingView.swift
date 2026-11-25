@@ -110,8 +110,9 @@ struct LeafOrbit: View {
             Canvas { ctx, size in
                 let t = timeline.date.timeIntervalSinceReferenceDate
                 let c = CGPoint(x: size.width / 2, y: size.height / 2)
-                let ringRadius = min(size.width, size.height) * 0.36
-                let leafSize = min(size.width, size.height) * 0.2
+                // Sized so the leaf, its glow and trail always stay inside the frame.
+                let ringRadius = min(size.width, size.height) * 0.3
+                let leafSize = min(size.width, size.height) * 0.17
 
                 // The ring the leaf follows.
                 ctx.stroke(Path(ellipseIn: CGRect(x: c.x - ringRadius, y: c.y - ringRadius, width: ringRadius * 2, height: ringRadius * 2)),
@@ -133,14 +134,15 @@ struct LeafOrbit: View {
                 }
 
                 let breathe = reduce ? 0.75 + 0.25 * sin(t * 2 * .pi / 3) : 1
-                let glow = leafSize * 1.4
+                let glow = leafSize * 1.2
                 ctx.fill(Path(ellipseIn: CGRect(x: p.x - glow, y: p.y - glow, width: glow * 2, height: glow * 2)),
                          with: .radialGradient(Gradient(colors: [Palette.gold.opacity(0.3 * breathe), Palette.gold.opacity(0)]),
                                                center: p, startRadius: 0, endRadius: glow))
                 ctx.drawLayer { layer in
-                    layer.translateBy(x: p.x, y: p.y + leafSize * 0.45)
-                    // The leaf points along its path, stem trailing.
+                    layer.translateBy(x: p.x, y: p.y)
+                    // The leaf's tip leads along the ring, stem trailing; it sits centred on the ring.
                     layer.rotate(by: .radians(angle + .pi))
+                    layer.translateBy(x: 0, y: leafSize * 0.2)
                     layer.fill(GinkgoLeaf.path(radius: leafSize), with: .linearGradient(
                         Gradient(colors: [Color(hex: 0xFFE3A6), Palette.gold, Color(hex: 0xE2B262)]),
                         startPoint: CGPoint(x: 0, y: -leafSize), endPoint: CGPoint(x: 0, y: leafSize * 0.2)))
